@@ -58,11 +58,13 @@ def test_build_category_tree_nests_children(db):
 @pytest.mark.django_db
 def test_get_category_flat_returns_list(db):
     user = UserFactory()
-    Category.objects.create(name="Food", is_system=True, owner=None)
-    Category.objects.create(name="My Cat", owner=user)
+    my_cat = Category.objects.create(name="My Cat", owner=user)
+    system_count = Category.objects.filter(is_system=True).count()
 
     result = get_category_flat(user=user)
-    assert len(result) == 2
+    # Should have all system categories + the user's category
+    assert len(result) == system_count + 1
+    assert any(c["id"] == my_cat.id for c in result)
 
 
 @pytest.mark.django_db
@@ -136,3 +138,10 @@ def test_soft_delete_marks_deleted_at(db):
     soft_delete_category(category=cat, user=user)
     cat.refresh_from_db()
     assert cat.deleted_at is not None
+
+
+@pytest.mark.django_db
+def test_system_categories_seeded(db):
+    """After migrations, at least 7 system categories exist."""
+    count = Category.objects.filter(is_system=True).count()
+    assert count >= 7
