@@ -64,6 +64,7 @@ Format: `D-NNN: Başlık (Tarih)` — durum: ✅ Aktif / ⚠️ Revize / 🗄️
 **Bağlam:** Phase 4.5'te `Transaction.account` NOT NULL FK eklendi. Mevcut Phase 4 test transaction'larında account verisi yoktu.  
 **Karar:** Migration 0002'de `Transaction.objects.all().delete()` ile test verisi silindi, sonra FK eklendi. Production verisi yoktu, data migration karmaşıklığına gerek görülmedi.  
 **Sonuç:** Bu pattern production'da geçersiz. Production'da önce backfill, sonra NOT NULL.  
+**Kural (gelecek için):** Production verisine dokunan ya da NOT NULL constraint ekleyen her schema migration, merge'den önce bir ADR yazarak backfill planını belgelemelidir.  
 **Durum:** ✅ Aktif (prensip: production'da aynı karar alınamaz)
 
 ---
@@ -83,6 +84,27 @@ Format: `D-NNN: Başlık (Tarih)` — durum: ✅ Aktif / ⚠️ Revize / 🗄️
 **Karar:** `Budget.user` direkt FK. Paylaşım, RBAC, çoklu-kullanıcı budget yok.  
 **Sonuç:** Model tasarımı basit tutuluyor. Scope değişirse bu karar ilk revize edilecek.  
 **Durum:** ✅ Aktif
+
+---
+
+## D-011: Budget currency — her zaman kullanıcının base currency'si (2026-05-01)
+
+**Bağlam:** Phase 5 model tasarımı. `Transaction.amount_base` tüm işlemleri base currency'ye çevirip saklar.  
+**Karar:** Budget her zaman `UserProfile.default_currency_code` cinsinden tanımlanır. `spent` hesabı `Transaction.amount_base` üzerinden yapılır — ayrı FX dönüşümüne gerek yok.  
+**Sonuç:** Multi-currency budget desteği yok (kişisel ölçek, kapsam dışı). Kural §13 olarak ARCHITECTURE_RULES.md'ye eklendi.  
+**Durum:** ✅ Aktif
+
+---
+
+## D-012: Geçmiş tarihli transaction FX girişi (2026-05-01)
+
+**Bağlam:** Kullanıcı 2+ yıl öncesine ait kira/fatura girmek isteyebilir. O tarihe ait FxRate olmayabilir.  
+**Karar (açık):** Şu an `convert()` en yakın tarihe fallback yapar, 30 günden eskiyse `StaleFxRateError` fırlatır. Çözüm seçenekleri:
+  1. Kullanıcı `fx_rate_override` payload'ı ile manuel rate girer
+  2. FX endpoint'i üzerinden önce o tarihin rate'ini seed eder
+  3. Geçmiş entry'ler için stale guard devre dışı bırakılır (en riskli)  
+**Sonuç:** Phase 6 (frontend) öncesinde karar verilmeli — UI'da rate girişi alanı gerekiyor mu?  
+**Durum:** ⚠️ Açık karar — Phase 5 veya 6 başında çözülmeli
 
 ---
 

@@ -91,7 +91,7 @@ All errors use the uniform envelope defined in `common/exceptions.py`:
 ```json
 {
   "error": {
-    "type": "VALIDATION_ERROR | NOT_FOUND | PERMISSION_DENIED | CONFLICT | RATE_LIMITED | ...",
+    "type": "VALIDATION_ERROR | NOT_FOUND | PERMISSION_DENIED | CONFLICT | RATE_LIMITED | STALE_FX_RATE | ...",
     "detail": "<human-readable or nested DRF errors>",
     "status": 400
   }
@@ -148,7 +148,7 @@ Any service function that mutates **two or more rows** must be wrapped in `@tran
 - Recurring materialize — writes `Transaction`, mutates `RecurringTemplate.last_generated_date`
 - Account deletion with cascade — touches multiple tables
 
-Single-row mutations (a plain `Transaction.objects.create(...)`) do not need an explicit atomic wrapper; Django gives them implicit transaction safety per request when `ATOMIC_REQUESTS=True` (it's not on by default — opt in per service when correctness depends on it).
+Single-row mutations (a plain `Transaction.objects.create(...)`) do not need an explicit atomic wrapper — a single INSERT is already atomic at the DB level.
 
 ---
 
@@ -165,7 +165,8 @@ Single-row mutations (a plain `Transaction.objects.create(...)`) do not need an 
 
 - `Model.objects` returns only live rows (default manager filters `deleted_at__isnull=True`).
 - `Model.all_objects` returns everything — admin/audit/restore only.
-- **Hard deletes are prohibited on user-owned financial data** (transactions, debts, payments, accounts with history). Soft delete only.
+- **Hard deletes are prohibited on user-owned financial data** (transactions, debts, accounts with history). Soft delete only.
+  - **Exception:** `DebtPayment` is hard-deleted in reversal flows — the paired `Transaction` is soft-deleted to preserve audit trail. Hard delete is only permitted via an explicit reversal service with a corresponding ADR (see D-008). Any new hard-delete exception requires a new ADR before merge.
 - `on_delete` policy:
   - User → preserve financial records: prefer `PROTECT` or soft-delete cascade; never plain `CASCADE` for financial tables
   - Account → `PROTECT` (force user to migrate transactions first; respond 409 CONFLICT)
@@ -176,9 +177,10 @@ Single-row mutations (a plain `Transaction.objects.create(...)`) do not need an 
 ## 11. Performance & Indexing
 
 - Composite indexes are mandatory on user-scoped tables that filter or order by date/created_at:
-  - `(user, date)` for transactions
+  - `(user, date)` for transactions ✅
+  - `(user, type)` and `(user, category)` for transactions ✅
+  - `(user, account)` for transactions — **pending, tech debt**
   - `(user, created_at)` for any list endpoint that paginates by recency
-  - `(user, account)` and `(user, category)` where filters are common
 - **N+1 in list endpoints is a defect, not a performance "concern".** Use one of:
   - `select_related()` for FK
   - `prefetch_related()` for reverse FK / M2M
@@ -213,21 +215,32 @@ FX_STALE_ERROR_DAYS   = 30
 
 The Frankfurter daily beat task is the primary defense; this is the secondary guard for when beat fails or for very old historical conversions.
 
+**Historical entry scenario:** If a user enters a transaction dated 2+ years ago and no FxRate exists for that date, `convert()` falls back to the nearest available rate. If no rate exists within 30 days of the target date, `StaleFxRateError` is raised. Resolution: user provides `fx_rate_override` in the request payload, or pre-seeds the rate via the FX endpoint. This is an **open product decision** — see D-012.
+
 ---
 
-## 13. Success Response Envelope
+## 13. Budget Currency Denomination
+
+Budgets are always denominated in the **user's base currency** (`UserProfile.default_currency_code`). Usage (`spent`) is computed from `Transaction.amount_base` (already converted to base currency at write time). Multi-currency budget support is out of scope for personal-scale design.
+
+See D-010 and D-011 for the model decisions behind this.
+
+---
+
+## 15. Success Response Envelope
 
 Decided early to avoid frontend refactor pain:
 
 - **List endpoints** (paginated): DRF default — `{"results": [...], "count": N, "next": ..., "previous": ...}`
 - **Detail / Create / Update endpoints**: bare object, no envelope. Status code conveys intent (200/201/204).
+- **Aggregation / summary endpoints** (`/summary/`, `/monthly-summary/`): bare object, same as detail. Not paginated.
 - **Errors** (any endpoint): always wrapped in the error envelope (Section 4).
 
 The asymmetry between success-bare and error-wrapped is intentional — frontend has one error-handler path, success paths consume the natural shape.
 
 ---
 
-## 14. Backup & Restore
+## 16. Backup & Restore
 
 **Postgres volume is the single point of failure for user data. Backup is mandatory infrastructure, not a feature.**
 
@@ -244,7 +257,7 @@ Schedule a quarterly restore drill once production data exists.
 
 ---
 
-## 15. Proactive Warning Triggers
+## 17. Proactive Warning Triggers
 
 The following patterns must be flagged immediately during development:
 
