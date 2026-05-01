@@ -6,7 +6,12 @@ from decimal import Decimal
 import pytest
 from django.core.cache import cache
 
-from apps.currencies.services import RateNotFoundError, convert
+from apps.currencies.services import (
+    RateNotFoundError,
+    UnknownCurrencyError,
+    convert,
+    upsert_rate,
+)
 from apps.currencies.tests.factories import FxRateFactory
 
 
@@ -68,3 +73,25 @@ class TestConvert:
         # Second call must not hit the DB
         with django_assert_num_queries(0):
             convert(Decimal("1"), "USD", "TRY", at=date(2026, 5, 1))
+
+
+@pytest.mark.django_db
+class TestUpsertRateOrphanGuard:
+    def test_rejects_unknown_base(self) -> None:
+        with pytest.raises(UnknownCurrencyError, match="ZZZ"):
+            upsert_rate(
+                base="ZZZ", quote="USD", rate=Decimal("1.0"), rate_date=date(2026, 5, 1)
+            )
+
+    def test_rejects_unknown_quote(self) -> None:
+        with pytest.raises(UnknownCurrencyError, match="ZZZ"):
+            upsert_rate(
+                base="USD", quote="ZZZ", rate=Decimal("1.0"), rate_date=date(2026, 5, 1)
+            )
+
+    def test_accepts_known_pair(self) -> None:
+        # USD and TRY are both in the seeded catalog
+        rate = upsert_rate(
+            base="USD", quote="TRY", rate=Decimal("32.5"), rate_date=date(2026, 5, 1)
+        )
+        assert rate.pk is not None

@@ -8,7 +8,7 @@ from typing import Final
 from django.core.cache import cache
 from django.db import transaction
 
-from .models import FxRate
+from .models import Currency, FxRate
 
 CACHE_TTL_SECONDS: Final[int] = 60 * 60  # 1 hour
 QUANTIZE = Decimal("0.00000001")
@@ -16,6 +16,10 @@ QUANTIZE = Decimal("0.00000001")
 
 class RateNotFoundError(LookupError):
     """No FX rate available for the requested pair on or before the given date."""
+
+
+class UnknownCurrencyError(ValueError):
+    """An FX write was attempted for a currency not present in the Currency catalog."""
 
 
 def _cache_key(base: str, quote: str, at: date_type) -> str:
@@ -73,7 +77,22 @@ def convert(amount: Decimal, from_code: str, to_code: str, *, at: date_type) -> 
 
 
 def upsert_rate(*, base: str, quote: str, rate: Decimal, rate_date: date_type) -> FxRate:
-    """Idempotent insert/update of an FX snapshot."""
+    """Idempotent insert/update of an FX snapshot.
+
+    FxRate stores currency codes as strings (not FK to Currency) to avoid JOIN
+    cost on every conversion. This guard is the app-level substitute for an FK
+    constraint: it ensures both codes exist in the Currency catalog before write,
+    so we can never produce orphan rows even if a future caller bypasses the
+    Frankfurter task. Postgres CHECK constraints can't do cross-table lookups
+    cleanly, so this lives in the service rather than the schema.
+    """
+    known = set(Currency.objects.filter(code__in=(base, quote)).values_list("code", flat=True))
+    missing = {base, quote} - known
+    if missing:
+        raise UnknownCurrencyError(
+            f"Cannot write FX rate; unknown currency code(s) in catalog: {sorted(missing)}"
+        )
+
     with transaction.atomic():
         obj, _ = FxRate.objects.update_or_create(
             base_code=base,
