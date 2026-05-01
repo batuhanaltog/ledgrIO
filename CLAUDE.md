@@ -27,7 +27,7 @@ Ledgr.io is a high-level Fintech SaaS platform for budget and portfolio manageme
 - **Frontend:** React functional components + TanStack Query. ShadcnUI for primitives, Tailwind for styling. Avoid generic AI-styled UI — aim for distinctive, professional design.
 
 ## 🧪 Testing Standards
-- Target: minimum **90% test coverage** (current: **91%** after Phase 1).
+- Target: minimum **90% test coverage** (current: **94%** after Phase 2).
 - Backend: `pytest` + `factory-boy`. Focus on edge cases in financial logic.
 - Frontend: Vitest unit tests; E2E for critical flows.
 
@@ -69,8 +69,8 @@ ledgrIO/
 | Faz | Durum | Açıklama |
 |---|---|---|
 | **1. Repo iskelet + Docker** | ✅ Tamamlandı | `docker compose up` ile postgres/redis/backend/celery worker+beat çalışır. Health endpoint `database` + `redis` ok döner. |
-| **2. Auth/Users (JWT)** | ✅ **Tamamlandı** | Email-based custom User + UserProfile (auto via signal). Endpoints: `/auth/register/`, `/auth/login/`, `/auth/refresh/`, `/auth/logout/` (blacklist), `/users/me/` (GET + PATCH). 27 test, %91 cov. TDD: red → green → refactor. |
-| 3. Currencies + FX | ⏳ Pending | Currency, FxRate, daily Celery beat fetch, Redis-cached `convert()` |
+| **2. Auth/Users (JWT)** | ✅ Tamamlandı | Email-based custom User + UserProfile (auto via signal). Endpoints: `/auth/register/`, `/auth/login/`, `/auth/refresh/`, `/auth/logout/` (blacklist), `/users/me/` (GET + PATCH). 27 test, %91 cov. TDD: red → green → refactor. |
+| **3. Currencies + FX** | ✅ **Tamamlandı** | `Currency` katalog (TRY/USD/EUR/GBP/JPY/BTC/ETH seed), `FxRate` snapshot (unique base+quote+date, check constraint base≠quote). Frankfurter.dev provider (key gerekmez), `convert()` direct + inverse + tarih fallback + 1h Redis cache. Celery beat günlük 06:30 UTC. Endpoints: `/currencies/`, `/fx/?base=X&quote=Y[&date=Z]`. 22 test, toplam %94 cov. |
 | 4. Transactions + Categories | ⏳ Pending | Multi-currency snapshot, hiyerarşik kategori, window function summary |
 | 5. Budgets + Alerts | ⏳ Pending | Budget snapshots, threshold alerts, Celery beat |
 | 6. Frontend skeleton + Auth | ⏳ Pending | Vite/React/TS, Tailwind, ShadcnUI, profesyonel tasarım |
@@ -87,3 +87,7 @@ ledgrIO/
 - **Custom User model timing:** `AUTH_USER_MODEL`'i mutlaka **ilk migrate'ten önce** set et. Sonradan eklersen `InconsistentMigrationHistory` çıkar — dev'de fix: `docker compose down -v` (volume'ü siler).
 - **Phase boundary trade-off:** `User.default_currency_code` şu an `CharField(3)` + regex validator. Phase 2'de `Currency` modeli geldiğinde data migration ile FK'ya promote edilecek (`apps/users/migrations/000X_currency_fk.py`).
 - **simplejwt + custom User:** `TokenObtainPairSerializer.username_field = User.USERNAME_FIELD` set etmek `email` ile login için yeterli — ekstra view yazma.
+- **CursorPagination + custom field:** Default DRF `CursorPagination` `created` field bekler. Currency gibi enumerable küçük tablolarda view-specific `PageNumberPagination` aç, yoksa `FieldError: Cannot resolve keyword 'created'`.
+- **`python -c` + Django ORM:** Container içinde Django setup'ı çalışmaz. Daima `python manage.py shell -c "..."` kullan, yoksa `AppRegistryNotReady`.
+- **Celery beat schedule:** `DatabaseScheduler` kullanılınca `CELERY_BEAT_SCHEDULE` setting okunmaz. Periodic task'leri data migration ile DB'ye yaz (örn. `apps/currencies/migrations/0003_register_daily_fx_beat.py`). Migration dependency olarak `django_celery_beat`'in en son migration'ını yaz, yoksa "node not in graph" hatası alırsın.
+- **FX strategy:** Snapshot pattern — `FxRate` rate'i kayıt anında store edilir, eski transaction'lar değişmez. `convert()` direct rate yoksa inverse'i 1/rate ile dener; ikisi de yoksa o tarihten önceki en yakın rate'e fallback yapar.

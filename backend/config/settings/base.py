@@ -44,6 +44,7 @@ THIRD_PARTY_APPS: Final[list[str]] = [
 LOCAL_APPS: Final[list[str]] = [
     "common",
     "apps.users",
+    "apps.currencies",
 ]
 
 AUTH_USER_MODEL = "users.User"
