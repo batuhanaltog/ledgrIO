@@ -76,6 +76,20 @@ def convert(amount: Decimal, from_code: str, to_code: str, *, at: date_type) -> 
     return (amount * rate).quantize(QUANTIZE)
 
 
+def get_exchange_rate(from_code: str, to_code: str, *, at: date_type) -> Decimal:
+    """Return the raw exchange rate for a currency pair at the given date.
+
+    Uses the same direct/inverse/fallback logic as _lookup_rate. Used when
+    callers need the rate itself (e.g. to store as fx_rate_snapshot).
+    """
+    if from_code == to_code:
+        return Decimal("1")
+    rate = _lookup_rate(from_code, to_code, at)
+    if rate is None:
+        raise RateNotFoundError(f"No FX rate for {from_code}->{to_code} on or before {at}")
+    return rate
+
+
 def upsert_rate(*, base: str, quote: str, rate: Decimal, rate_date: date_type) -> FxRate:
     """Idempotent insert/update of an FX snapshot.
 
