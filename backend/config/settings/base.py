@@ -46,6 +46,8 @@ LOCAL_APPS: Final[list[str]] = [
     "common",
     "apps.users",
     "apps.currencies",
+    "apps.categories",
+    "apps.transactions",
 ]
 
 AUTH_USER_MODEL = "users.User"
@@ -147,6 +149,7 @@ REST_FRAMEWORK: dict = {
     "PAGE_SIZE": 25,
     "EXCEPTION_HANDLER": "common.exceptions.drf_exception_handler",
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
+    "URL_FORMAT_OVERRIDE": None,
 }
 
 # JWT
