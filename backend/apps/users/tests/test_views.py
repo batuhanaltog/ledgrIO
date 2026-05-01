@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 import pytest
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.users.models import User
 from apps.users.tests.factories import UserFactory
+
+
+@pytest.fixture(autouse=True)
+def _clear_ratelimit_cache() -> None:
+    """django-ratelimit stores counters in cache; isolate between tests."""
+    cache.clear()
 
 
 @pytest.fixture
@@ -171,3 +178,39 @@ class TestMeEndpoint:
         assert response.data["default_currency_code"] == "TRY"
         assert response.data["profile"]["timezone"] == "Europe/Istanbul"
         assert response.data["profile"]["locale"] == "tr-TR"
+
+
+@pytest.mark.django_db
+class TestRateLimits:
+    def test_login_blocks_after_burst(self, api: APIClient) -> None:
+        UserFactory(email="rl@ledgr.io")
+        # Rate is 10/minute on POST /auth/login/. 11th must 429.
+        for _ in range(10):
+            r = api.post(
+                "/api/v1/auth/login/",
+                {"email": "rl@ledgr.io", "password": "wrong"},
+                format="json",
+            )
+            assert r.status_code == status.HTTP_401_UNAUTHORIZED
+        blocked = api.post(
+            "/api/v1/auth/login/",
+            {"email": "rl@ledgr.io", "password": "wrong"},
+            format="json",
+        )
+        assert blocked.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+
+    def test_register_blocks_after_burst(self, api: APIClient) -> None:
+        # Rate is 5/h on POST /auth/register/. 6th must 429.
+        for i in range(5):
+            r = api.post(
+                "/api/v1/auth/register/",
+                {"email": f"u{i}@ledgr.io", "password": "StrongPass123!"},
+                format="json",
+            )
+            assert r.status_code == status.HTTP_201_CREATED
+        blocked = api.post(
+            "/api/v1/auth/register/",
+            {"email": "u99@ledgr.io", "password": "StrongPass123!"},
+            format="json",
+        )
+        assert blocked.status_code == status.HTTP_429_TOO_MANY_REQUESTS

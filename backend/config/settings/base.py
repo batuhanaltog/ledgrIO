@@ -17,7 +17,8 @@ env = environ.Env(
     CORS_ALLOWED_ORIGINS=(list, []),
 )
 
-SECRET_KEY: Final[str] = env("DJANGO_SECRET_KEY", default="insecure-dev-key-change-me")
+# Required — no default. Container will fail to start if missing.
+SECRET_KEY: Final[str] = env("DJANGO_SECRET_KEY")
 DEBUG: Final[bool] = env("DJANGO_DEBUG")
 ALLOWED_HOSTS: list[str] = env("DJANGO_ALLOWED_HOSTS")
 
@@ -182,6 +183,10 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 60 * 5
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# Rate limiting (django-ratelimit)
+RATELIMIT_USE_CACHE = "default"
+RATELIMIT_VIEW = "common.exceptions.ratelimited_view"
 
 # Logging — basic structured-ish setup
 LOGGING: dict = {

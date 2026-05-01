@@ -1,22 +1,72 @@
 """Custom DRF exception handler — emits a uniform error envelope."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Final
 
+from django.conf import settings
+from django.http import HttpRequest, JsonResponse
+from django_ratelimit.exceptions import Ratelimited
+from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
+# Map DRF status codes to a stable, framework-agnostic taxonomy clients can branch on.
+# Adding a new error type? Add it here, not by leaking exc.__class__.__name__.
+_TYPE_BY_STATUS: Final[dict[int, str]] = {
+    status.HTTP_400_BAD_REQUEST: "VALIDATION_ERROR",
+    status.HTTP_401_UNAUTHORIZED: "AUTHENTICATION_FAILED",
+    status.HTTP_403_FORBIDDEN: "PERMISSION_DENIED",
+    status.HTTP_404_NOT_FOUND: "NOT_FOUND",
+    status.HTTP_405_METHOD_NOT_ALLOWED: "METHOD_NOT_ALLOWED",
+    status.HTTP_409_CONFLICT: "CONFLICT",
+    status.HTTP_415_UNSUPPORTED_MEDIA_TYPE: "UNSUPPORTED_MEDIA_TYPE",
+    status.HTTP_429_TOO_MANY_REQUESTS: "RATE_LIMITED",
+}
+
 
 def drf_exception_handler(exc: Exception, context: dict[str, Any]) -> Response | None:
+    # django-ratelimit raises Ratelimited (subclass of PermissionDenied) which
+    # DRF would otherwise render as 403; we want a real 429.
+    if isinstance(exc, Ratelimited):
+        return Response(
+            {
+                "error": {
+                    "type": "RATE_LIMITED",
+                    "detail": "Too many requests. Slow down.",
+                    "status": status.HTTP_429_TOO_MANY_REQUESTS,
+                }
+            },
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
     response = exception_handler(exc, context)
     if response is None:
         return None
 
-    response.data = {
+    error_type = _TYPE_BY_STATUS.get(response.status_code, "INTERNAL_ERROR")
+    payload: dict[str, Any] = {
         "error": {
-            "type": exc.__class__.__name__,
+            "type": error_type,
             "detail": response.data,
             "status": response.status_code,
         }
     }
+    # Only expose framework class names in DEBUG to aid local debugging.
+    if settings.DEBUG:
+        payload["error"]["debug_class"] = exc.__class__.__name__
+    response.data = payload
     return response
+
+
+def ratelimited_view(request: HttpRequest, exception: Exception) -> JsonResponse:
+    """Custom handler for django-ratelimit's Ratelimited exception → 429."""
+    return JsonResponse(
+        {
+            "error": {
+                "type": "RATE_LIMITED",
+                "detail": "Too many requests. Slow down.",
+                "status": status.HTTP_429_TOO_MANY_REQUESTS,
+            }
+        },
+        status=status.HTTP_429_TOO_MANY_REQUESTS,
+    )

@@ -1,6 +1,8 @@
 """HTTP layer for the users app — thin, delegates to services."""
 from __future__ import annotations
 
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -19,12 +21,14 @@ from .serializers import (
 )
 
 
+@method_decorator(ratelimit(key="ip", rate="5/h", method="POST", block=True), name="post")
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = (AllowAny,)
     authentication_classes = ()
 
 
+@method_decorator(ratelimit(key="ip", rate="10/m", method="POST", block=True), name="post")
 class LoginView(TokenObtainPairView):
     serializer_class = EmailTokenObtainPairSerializer
     permission_classes = (AllowAny,)

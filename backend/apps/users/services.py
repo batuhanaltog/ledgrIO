@@ -1,11 +1,19 @@
 """User-related business logic — owns all writes per CLAUDE.md service pattern."""
 from __future__ import annotations
 
+from typing import Final
+
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
 from .models import CURRENCY_CODE_VALIDATOR, User, UserProfile
+
+# Defense-in-depth: serializer already restricts via Meta.fields, but the
+# service must reject unknown keys too in case it's called from other code paths.
+ALLOWED_PROFILE_FIELDS: Final[frozenset[str]] = frozenset(
+    {"timezone", "locale", "monthly_income"}
+)
 
 
 def register_user(
@@ -51,6 +59,11 @@ def update_user(
             user.save(update_fields=["default_currency_code", "updated_at"])
 
         if profile_fields:
+            unknown = set(profile_fields) - ALLOWED_PROFILE_FIELDS
+            if unknown:
+                raise ValidationError(
+                    {"profile": [f"Unknown profile field(s): {sorted(unknown)}"]}
+                )
             profile: UserProfile = user.profile
             for field, value in profile_fields.items():
                 setattr(profile, field, value)

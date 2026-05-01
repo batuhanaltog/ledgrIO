@@ -41,14 +41,21 @@ class UserSerializer(serializers.ModelSerializer):
 
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    password = serializers.CharField(write_only=True, min_length=8, max_length=128)
+    # No min_length here — Django's AUTH_PASSWORD_VALIDATORS is the single
+    # source of truth (see settings.base.AUTH_PASSWORD_VALIDATORS). The service
+    # calls validate_password() which enforces all configured validators.
+    password = serializers.CharField(write_only=True, max_length=128)
     default_currency_code = serializers.CharField(default="USD", max_length=3)
 
     def create(self, validated_data: dict[str, Any]) -> User:
         try:
             return register_user(**validated_data)
         except DjangoValidationError as exc:
-            raise serializers.ValidationError(exc.message_dict) from exc
+            # validate_password() raises a list-shaped ValidationError, while
+            # service-level errors raise dict-shaped. Normalize to "password" key
+            # when the message has no field association.
+            detail = exc.message_dict if hasattr(exc, "error_dict") else {"password": exc.messages}
+            raise serializers.ValidationError(detail) from exc
 
     def to_representation(self, instance: User) -> dict[str, Any]:
         return UserSerializer(instance).data
