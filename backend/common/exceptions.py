@@ -71,6 +71,14 @@ class RecurringTemplateInvalidError(ValueError):
     """Recurring template configuration is invalid (e.g. currency mismatch with account)."""
 
 
+class BudgetNotFoundError(LookupError):
+    """Requested budget does not exist or belongs to another user."""
+
+
+class BudgetInvalidError(ValueError):
+    """Budget configuration is invalid (e.g. date_to < date_from, category not owned)."""
+
+
 # Map DRF status codes to a stable, framework-agnostic taxonomy clients can branch on.
 # Adding a new error type? Add it here, not by leaking exc.__class__.__name__.
 _TYPE_BY_STATUS: Final[dict[int, str]] = {

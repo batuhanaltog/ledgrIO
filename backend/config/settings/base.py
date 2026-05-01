@@ -51,6 +51,7 @@ LOCAL_APPS: Final[list[str]] = [
     "apps.accounts",
     "apps.debts",
     "apps.recurring",
+    "apps.budgets",
 ]
 
 AUTH_USER_MODEL = "users.User"
