@@ -48,6 +48,14 @@ Bilinçli trade-off'lar ve öğrenilen dersler. **Bu dosyadaki kararlar değişt
 - **simplejwt + custom User:** `TokenObtainPairSerializer.username_field = User.USERNAME_FIELD` email login için yeterli, ekstra view gerekmez.
 - **Email verification production:** Backend çalışıyor (token + endpoint + console mail). Production'a çıkmadan `EMAIL_BACKEND` Mailgun/Anymail'e çevrilmeli.
 
+## Budget & Annotation Patterns
+
+- **Case/When Subquery for nullable FK:** When a FK is nullable and `null` means "all" (e.g. `budget.category = null` → covers all categories), split the `spent` annotation into two `Case/When` branches: one `Subquery` for the category-filtered path, one for the unfiltered path. Both branches must include the same `filter(type="expense")` guard.
+- **NullIf division guard on Decimal:** `ExpressionWrapper(F("spent") / F("amount"), ...)` will crash on `amount=0`. Use `NullIf(F("amount"), Value(Decimal("0")))` in the denominator. `usage_pct` annotation type is therefore `Decimal | None`, not `Decimal`.
+- **`_UNSET` sentinel for PATCH nullable FK:** `data.pop("category_id", None)` cannot distinguish "client omitted field" from "client explicitly sent null." Use `_UNSET = object()` sentinel: `category_id = data.pop("category_id", _UNSET)` then `if category_id is not _UNSET: budget.category_id = category_id`. This allows explicit null (clear category) while ignoring absent field.
+- **Quantize `fx_rate_snapshot` at both branches:** Pre-existing bug: `_compute_fx` stored the raw Decimal from `get_exchange_rate()` without quantizing. Fix: call `.quantize(QUANTIZE)` on the rate *before* computing `amount_base`, in both the `fx_rate_override` branch and the normal `convert()` branch.
+- **Alert atomicity: DB write first, email second:** In `check_and_send_budget_alerts`, set `alert_sent_at` inside `@transaction.atomic` BEFORE calling `send_mail`. A crash after the DB commit = missed alert (user re-runs beat tomorrow). A crash before the DB commit = double-send on next run. The former is acceptable; the latter is not.
+
 ## Process
 
 - **Tamamlanmış faz = donmuş:** Bug fix haricinde tamamlanmış fazlar yeniden açılmaz. Yeni feature = yeni faz. Aksi halde "neredeyiz" sinyali bozulur.

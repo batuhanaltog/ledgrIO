@@ -105,6 +105,15 @@ Format: `D-NNN: Başlık (Tarih)` — durum: ✅ Aktif / ⚠️ Revize / 🗄️
 
 ---
 
+## D-013: Budget alert email ordering — DB write before send_mail (2026-05-01)
+
+**Bağlam:** Phase 5 alert service tasarımı. `check_and_send_budget_alerts` hem DB'yi güncelleyip hem email atıyor. Hata anında hangisi önce gelirse yanlış davranış tetiklenebilir.  
+**Karar:** `alert_sent_at` alanı `@transaction.atomic` içinde email'den ÖNCE yazılır. `send_mail(fail_silently=True)` transaction dışında çağrılır.  
+**Sonuç:** Crash senaryoları: (a) DB yazma başarılı, email çöküyor → kullanıcı ertesi beat'te uyarı almaz (kabul edilebilir, missed alert). (b) DB yazılmadan crash → ertesi beat yeniden dener, çift email riski → bu senaryoyu `alert_sent_at` guard'ı önler. Missed alert, double-send'den tercih edilir.  
+**Durum:** ✅ Aktif
+
+---
+
 ## D-012: Geçmiş tarihli transaction FX girişi (2026-05-01)
 
 **Bağlam:** Kullanıcı 2+ yıl öncesine ait kira/fatura girmek isteyebilir. O tarihe ait FxRate olmayabilir.  
