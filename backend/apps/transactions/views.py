@@ -56,7 +56,6 @@ class TransactionListView(APIView):
 
     def post(self, request: Request) -> Response:
         from apps.accounts.models import Account
-        from common.exceptions import AccountNotFoundError
 
         user: AbstractBaseUser = request.user  # type: ignore[assignment]
         serializer = TransactionWriteSerializer(data=request.data)
@@ -66,7 +65,7 @@ class TransactionListView(APIView):
         try:
             account = Account.objects.get(pk=account_id, user=user)
         except Account.DoesNotExist:
-            raise NotFound(f"Account {account_id} not found.")
+            raise NotFound(f"Account {account_id} not found.") from None
         try:
             tx = services.create_transaction(user=user, account=account, **data)
         except (CategoryNotFoundError, CategoryPermissionError) as exc:

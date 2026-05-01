@@ -52,3 +52,10 @@ Bilinçli trade-off'lar ve öğrenilen dersler. **Bu dosyadaki kararlar değişt
 
 - **Tamamlanmış faz = donmuş:** Bug fix haricinde tamamlanmış fazlar yeniden açılmaz. Yeni feature = yeni faz. Aksi halde "neredeyiz" sinyali bozulur.
 - **Plan onayı ucuz, yanlış kod pahalı:** Her faz başında model şeması + endpoint listesi + service imzaları onaylanmadan kod yazılmaz.
+- **`phase-N-start` tag'ini erken at:** Faz başında ilk iş `git tag phase-N-start`. Geç atılırsa ya da unutulursa rollback noktası kaybolur.
+- **Diff review olmadan doc güncelleme yapılmaz:** "Dokümanları güncelle" dediğinde Claude'un nereye ne yazacağı belirsiz. Faz Bitiş Prompt'unda "önce diff göster" şartı kritik — yoksa Solo-Dev Tuzakları sessizce üzerine yazılabilir.
+- **Bootstrap prompt sırası önemli:** ARCHITECTURE_RULES okunmadan plan yapılmaz. Sıra: CLAUDE.md Current State → decisions.md son kararlar → plan öner → onay al → implement.
+- **Doküman güncellemeleri atomic commit olmalı:** Her faz sonu tek commit: `docs: complete phase N`. Tag: `git tag phase-N-complete`. Geri bakış için tarih damgası zorunlu.
+- **"Tech Debt: None" inanılmaz görünüyor:** Her faz sonunda §11 index listesi, §5 precision helper'ları ve §14 response envelope eksik implementasyon için kontrol edilmeli. Gerçek "None" nadirdir.
+- **Hard delete kararları ADR gerektirir:** `DebtPayment` gibi istisnalar önceden belgelenmeli. "Şimdilik hard delete yapalım" teknik borç değil, yanlış karardır — ADR yoksa merge edilmez.
+- **Section numarası değişen her edit'te cross-reference tara:** `grep -rn "§N" docs/` komutuyla tüm dosyalardaki referanslar kontrol edilmeli. Renumbering tek dosyada yapılır, kırık referans başka dosyada sessizce kalır.

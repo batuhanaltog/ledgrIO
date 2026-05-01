@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, cast
 
-from django.db.models import Case, Count, DecimalField, F, OuterRef, Q, Subquery, Sum, When
+from django.db.models import Case, Count, DecimalField, F, OuterRef, Subquery, Sum, When
 from django.db.models.functions import Coalesce
 
 from apps.accounts.models import Account

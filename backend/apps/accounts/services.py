@@ -3,8 +3,6 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, cast
 
-from django.db import transaction as db_transaction
-
 from apps.accounts.models import Account
 from apps.currencies.models import Currency
 from common.exceptions import AccountCurrencyLockedError, AccountInUseError

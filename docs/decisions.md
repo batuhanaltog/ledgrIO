@@ -64,6 +64,7 @@ Format: `D-NNN: Başlık (Tarih)` — durum: ✅ Aktif / ⚠️ Revize / 🗄️
 **Bağlam:** Phase 4.5'te `Transaction.account` NOT NULL FK eklendi. Mevcut Phase 4 test transaction'larında account verisi yoktu.  
 **Karar:** Migration 0002'de `Transaction.objects.all().delete()` ile test verisi silindi, sonra FK eklendi. Production verisi yoktu, data migration karmaşıklığına gerek görülmedi.  
 **Sonuç:** Bu pattern production'da geçersiz. Production'da önce backfill, sonra NOT NULL.  
+**Kural (gelecek için):** Production verisine dokunan ya da NOT NULL constraint ekleyen her schema migration, merge'den önce bir ADR yazarak backfill planını belgelemelidir.  
 **Durum:** ✅ Aktif (prensip: production'da aynı karar alınamaz)
 
 ---
@@ -91,4 +92,23 @@ Format: `D-NNN: Başlık (Tarih)` — durum: ✅ Aktif / ⚠️ Revize / 🗄️
 **Bağlam:** Phase 5 model tasarımı.  
 **Karar:** `date_from` + `date_to` explicit date fields. `period_type` enum (monthly/yearly) yok. Daha esnek, daha az magic.  
 **Sonuç:** Kullanıcı istediği tarih aralığını belirtir. UI "bu ay" shortcut'ı verebilir ama model bağımsız.  
+**Durum:** ✅ Aktif (Phase 5'te implement edilecek)
+
+---
+
+## D-011: Budget currency — her zaman kullanıcının base currency'si (2026-05-01)
+
+**Bağlam:** Phase 5 model tasarımı. `Transaction.amount_base` tüm işlemleri base currency'ye çevirip saklar.  
+**Karar:** Budget her zaman `UserProfile.default_currency_code` cinsinden tanımlanır. `spent` hesabı `Transaction.amount_base` üzerinden yapılır — ayrı FX dönüşümüne gerek yok.  
+**Sonuç:** Multi-currency budget desteği yok (kişisel ölçek, kapsam dışı). Kural §13 olarak ARCHITECTURE_RULES.md'ye eklendi.  
+**Durum:** ✅ Aktif
+
+---
+
+## D-012: Geçmiş tarihli transaction FX girişi (2026-05-01)
+
+**Bağlam:** Kullanıcı 2+ yıl öncesine ait kira/fatura girmek isteyebilir. O tarihe ait FxRate olmayabilir.  
+**Karar:** Seçenek 1 — `fx_rate_override` optional field. `POST /api/v1/transactions/` payload'ına isteğe bağlı `fx_rate_override: Decimal` eklenir. Gönderilirse `convert()` atlanır, bu değer doğrudan `fx_rate_snapshot` ve `amount_base` hesabında kullanılır. Gönderilmezse mevcut fallback + stale guard davranışı korunur.  
+**Gerekçe:** Seçenek 2 kullanıcıya 2 adımlı iş yükü bindiriyor; Seçenek 3 precision güvencesini kırıyor; Seçenek 1 mevcut `convert()` imzasına minimal ek, kullanıcıya tam kontrol.  
+**Sonuç:** Phase 5 transaction create/update flow'unda uygulanacak. UI'da "Override FX Rate" opsiyonel alan olarak sunulacak (Phase 6+).  
 **Durum:** ✅ Aktif (Phase 5'te implement edilecek)

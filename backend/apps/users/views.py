@@ -19,7 +19,12 @@ from .serializers import (
     RegisterSerializer,
     UserSerializer,
 )
-from .verification import TokenInvalidError, confirm_password_reset, request_password_reset, verify_email
+from .verification import (
+    TokenInvalidError,
+    confirm_password_reset,
+    request_password_reset,
+    verify_email,
+)
 
 
 @method_decorator(ratelimit(key="ip", rate="5/h", method="POST", block=True), name="post")

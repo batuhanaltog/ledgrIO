@@ -8,8 +8,7 @@ import pytest
 from django.core.cache import cache
 from rest_framework.test import APIClient
 
-from apps.categories.models import Category
-from apps.currencies.tests.factories import CurrencyFactory, FxRateFactory
+from apps.currencies.tests.factories import CurrencyFactory
 
 
 @pytest.fixture(autouse=True)

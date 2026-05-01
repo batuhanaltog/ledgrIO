@@ -280,8 +280,7 @@ def test_record_debt_payment_atomicity():
     tx_count_before = Transaction.objects.count()
     payment_count_before = DebtPayment.objects.count()
 
-    with patch("apps.debts.services.DebtPayment.objects.create", side_effect=RuntimeError("boom")):
-        with pytest.raises(RuntimeError):
+    with patch("apps.debts.services.DebtPayment.objects.create", side_effect=RuntimeError("boom")), pytest.raises(RuntimeError):
             record_debt_payment(
                 debt=debt,
                 account=account,
@@ -442,7 +441,7 @@ def test_get_debt_monthly_summary_arithmetic():
         expected_monthly_payment=Decimal("400"),
         currency_code="USD",
     )
-    debt_b = create_debt(
+    create_debt(
         user=user,
         category_id=None,
         name="Debt B",

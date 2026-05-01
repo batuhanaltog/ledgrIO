@@ -34,10 +34,9 @@ class RecurringTemplateListCreateView(APIView):
         if type_ := request.query_params.get("type"):
             filters["type"] = type_
         if account_id := request.query_params.get("account_id"):
-            try:
+            import contextlib
+            with contextlib.suppress(ValueError):
                 filters["account_id"] = int(account_id)
-            except ValueError:
-                pass
         if frequency := request.query_params.get("frequency"):
             filters["frequency"] = frequency
         if request.query_params.get("is_active") in ("1", "true", "True"):

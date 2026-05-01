@@ -7,18 +7,18 @@ from typing import TYPE_CHECKING, Any, cast
 from django.db import transaction as db_transaction
 
 from apps.currencies.models import Currency
-from apps.currencies.services import RateNotFoundError, get_exchange_rate
+from apps.currencies.services import get_exchange_rate
 from apps.debts.models import Debt, DebtCategory, DebtPayment
 from common.exceptions import (
     DebtBalanceUnderflowError,
-    DebtCategoryHasChildrenError,
     DebtCategoryCycleError,
+    DebtCategoryHasChildrenError,
     DebtCategoryNotFoundError,
-    DebtNotFoundError,
 )
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser
+
     from apps.accounts.models import Account
 
 QUANTIZE = Decimal("0.00000001")
@@ -233,7 +233,7 @@ def record_debt_payment(
 
     tx_description = description or f"Debt payment: {debt.name}"
 
-    from apps.transactions.models import Transaction, EXPENSE
+    from apps.transactions.models import EXPENSE, Transaction
 
     transaction = Transaction.objects.create(
         user=user,

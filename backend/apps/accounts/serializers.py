@@ -31,14 +31,8 @@ class AccountListSerializer(AccountSerializer):
     transaction_count = serializers.IntegerField(read_only=True)
 
     class Meta(AccountSerializer.Meta):
-        fields: ClassVar = AccountSerializer.Meta.fields + [
-            "current_balance",
-            "transaction_count",
-        ]
-        read_only_fields: ClassVar = AccountSerializer.Meta.read_only_fields + [
-            "current_balance",
-            "transaction_count",
-        ]
+        fields: ClassVar = [*AccountSerializer.Meta.fields, "current_balance", "transaction_count"]
+        read_only_fields: ClassVar = [*AccountSerializer.Meta.read_only_fields, "current_balance", "transaction_count"]
 
 
 class AccountCreateSerializer(serializers.Serializer):

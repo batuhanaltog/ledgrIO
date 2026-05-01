@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -8,7 +8,6 @@ from django.db import IntegrityError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.accounts.tests.factories import AccountFactory
-from apps.categories.tests.factories import CategoryFactory
 from apps.currencies.tests.factories import CurrencyFactory
 from apps.recurring.models import RecurringTemplate
 from apps.recurring.services import compute_next_due_date, materialize_template_for_date

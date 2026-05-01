@@ -9,7 +9,7 @@ ignore = ["E501", "RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 "*/migrations/*" = ["E", "F", "N", "I", "RUF012"]
-"*/tests/*" = ["S101"]
+"*/tests/*" = ["S101", "E402", "I001"]
 
 [tool.mypy]
 python_version = "3.12"
