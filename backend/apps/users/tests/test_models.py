@@ -19,9 +19,10 @@ class TestUserManager:
         assert user.is_staff is False
         assert user.is_superuser is False
 
-    def test_create_user_normalizes_email_domain(self) -> None:
+    def test_create_user_normalizes_email_to_lowercase(self) -> None:
+        # Both local-part and domain are lowercased to keep auth case-insensitive.
         user = User.objects.create_user(email="Bob@LEDGR.IO", password="StrongPass123!")
-        assert user.email == "Bob@ledgr.io"
+        assert user.email == "bob@ledgr.io"
 
     def test_create_user_requires_email(self) -> None:
         with pytest.raises(ValueError, match="email"):

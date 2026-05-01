@@ -12,6 +12,17 @@ if TYPE_CHECKING:
 class UserManager(BaseUserManager["User"]):
     use_in_migrations = True
 
+    @classmethod
+    def normalize_email(cls, email: str) -> str:  # type: ignore[override]
+        """Lowercase BOTH local and domain parts so email matching is case-insensitive.
+
+        Django's default lowercases only the domain, which leaves
+        Bob@ledgr.io and bob@ledgr.io as distinct accounts. Almost no real
+        provider treats local-parts as case-sensitive, so we don't either.
+        """
+        email = (email or "").strip()
+        return super().normalize_email(email).lower()
+
     def _create_user(self, email: str, password: str | None, **extra_fields: Any) -> User:
         if not email:
             raise ValueError("Users must have an email address")

@@ -40,7 +40,7 @@ class TestRegisterUserService:
 
     def test_normalizes_email(self) -> None:
         user = register_user(email="MIXED@LEDGR.IO", password="StrongPass123!")
-        assert user.email == "MIXED@ledgr.io"
+        assert user.email == "mixed@ledgr.io"
 
 
 @pytest.mark.django_db
