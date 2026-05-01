@@ -19,7 +19,7 @@ from .serializers import (
     RegisterSerializer,
     UserSerializer,
 )
-from .verification import TokenInvalidError, verify_email
+from .verification import TokenInvalidError, confirm_password_reset, request_password_reset, verify_email
 
 
 @method_decorator(ratelimit(key="ip", rate="5/h", method="POST", block=True), name="post")
@@ -75,6 +75,48 @@ class MeView(generics.RetrieveUpdateAPIView):
     def get_object(self) -> User:
         # IsAuthenticated permission guarantees this is a real User, not Anonymous.
         return self.request.user  # type: ignore[return-value]
+
+
+class PasswordResetRequestView(APIView):
+    """Send a password reset email. Always 200 to prevent enumeration."""
+
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+
+    @extend_schema(
+        request={"application/json": {"type": "object", "properties": {"email": {"type": "string"}}}},
+        responses={200: None},
+    )
+    def post(self, request: Request) -> Response:
+        email = request.data.get("email", "")
+        if not email:
+            return Response({"detail": "email required"}, status=status.HTTP_400_BAD_REQUEST)
+        request_password_reset(email=str(email))
+        return Response({"detail": "If that email is registered, a reset link has been sent."}, status=status.HTTP_200_OK)
+
+
+class PasswordResetConfirmView(APIView):
+    """Consume a reset token and set a new password."""
+
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+
+    @extend_schema(
+        request={"application/json": {"type": "object", "properties": {"token": {"type": "string"}, "new_password": {"type": "string"}}}},
+        responses={200: None, 400: None},
+    )
+    def post(self, request: Request) -> Response:
+        token_str = request.data.get("token")
+        new_password = request.data.get("new_password")
+        if not token_str or not new_password:
+            return Response({"detail": "token and new_password required"}, status=status.HTTP_400_BAD_REQUEST)
+        if len(str(new_password)) < 10:
+            return Response({"detail": "Password must be at least 10 characters."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            confirm_password_reset(token_str=str(token_str), new_password=str(new_password))
+        except TokenInvalidError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "Password reset successful."}, status=status.HTTP_200_OK)
 
 
 class VerifyEmailView(APIView):

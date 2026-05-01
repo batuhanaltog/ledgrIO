@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import secrets
+from datetime import timedelta
 from decimal import Decimal
 from typing import ClassVar, Final
 
@@ -15,6 +16,7 @@ from common.models import TimestampedModel
 from .managers import UserManager
 
 VERIFICATION_TOKEN_BYTES: Final[int] = 32  # ~256 bits of entropy
+RESET_TOKEN_TTL = timedelta(hours=1)
 
 CURRENCY_CODE_VALIDATOR = RegexValidator(
     regex=r"^[A-Z]{3}$",
@@ -88,6 +90,10 @@ def _new_verification_token() -> str:
     return secrets.token_urlsafe(VERIFICATION_TOKEN_BYTES)
 
 
+def _new_reset_token() -> str:
+    return secrets.token_urlsafe(VERIFICATION_TOKEN_BYTES)
+
+
 class EmailVerificationToken(TimestampedModel):
     """One-shot, time-bounded token a user presents to verify their email."""
 
@@ -104,6 +110,32 @@ class EmailVerificationToken(TimestampedModel):
 
     def __str__(self) -> str:
         return f"verify<{self.user.email}>"
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() >= self.expires_at
+
+    @property
+    def is_used(self) -> bool:
+        return self.used_at is not None
+
+
+class PasswordResetToken(TimestampedModel):
+    """One-shot, 1-hour token for password reset."""
+
+    token = models.CharField(
+        max_length=128, unique=True, default=_new_reset_token, db_index=True
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reset_tokens")
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "users_passwordresettoken"
+        ordering = ("-created_at",)
+
+    def __str__(self) -> str:
+        return f"reset<{self.user.email}>"
 
     @property
     def is_expired(self) -> bool:
