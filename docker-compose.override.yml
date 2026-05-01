@@ -11,7 +11,9 @@ services:
   backend:
     build:
       target: development
-    command: python manage.py runserver 0.0.0.0:8000
+    command: >
+      bash -c "python manage.py migrate --noinput &&
+               python manage.py runserver 0.0.0.0:8000"
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.development
     volumes:
@@ -27,6 +29,7 @@ services:
       - DJANGO_SETTINGS_MODULE=config.settings.development
     volumes:
       - ./backend:/app
+    restart: on-failure
 
   celery_beat:
     build:
@@ -35,6 +38,7 @@ services:
       - DJANGO_SETTINGS_MODULE=config.settings.development
     volumes:
       - ./backend:/app
+    restart: on-failure
 
   frontend:
     build:

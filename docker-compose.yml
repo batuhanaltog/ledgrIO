@@ -29,7 +29,9 @@ services:
     build:
       context: ./backend
       target: production
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
+    command: >
+      bash -c "python manage.py migrate --noinput &&
+               gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120"
     env_file: .env
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.production
@@ -58,6 +60,7 @@ services:
         condition: service_healthy
     volumes:
       - media_files:/app/media
+    restart: on-failure
 
   celery_beat:
     build:
@@ -72,6 +75,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: on-failure
 
   frontend:
     build:
