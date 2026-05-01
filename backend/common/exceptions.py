@@ -10,6 +10,27 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
+
+class CategoryNotFoundError(LookupError):
+    """Requested category does not exist or is not visible to the user."""
+
+
+class CategoryPermissionError(PermissionError):
+    """User attempted to modify a system category or another user's category."""
+
+
+class CategoryCycleError(ValueError):
+    """Setting this parent would create a cycle in the category tree."""
+
+
+class CategoryDepthError(ValueError):
+    """Category hierarchy would exceed the maximum allowed depth (10)."""
+
+
+class TransactionNotFoundError(LookupError):
+    """Requested transaction does not exist or belongs to another user."""
+
+
 # Map DRF status codes to a stable, framework-agnostic taxonomy clients can branch on.
 # Adding a new error type? Add it here, not by leaking exc.__class__.__name__.
 _TYPE_BY_STATUS: Final[dict[int, str]] = {
