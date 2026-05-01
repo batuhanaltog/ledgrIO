@@ -108,9 +108,7 @@ Format: `D-NNN: Başlık (Tarih)` — durum: ✅ Aktif / ⚠️ Revize / 🗄️
 ## D-012: Geçmiş tarihli transaction FX girişi (2026-05-01)
 
 **Bağlam:** Kullanıcı 2+ yıl öncesine ait kira/fatura girmek isteyebilir. O tarihe ait FxRate olmayabilir.  
-**Karar (açık):** Şu an `convert()` en yakın tarihe fallback yapar, 30 günden eskiyse `StaleFxRateError` fırlatır. Çözüm seçenekleri:
-  1. Kullanıcı `fx_rate_override` payload'ı ile manuel rate girer
-  2. FX endpoint'i üzerinden önce o tarihin rate'ini seed eder
-  3. Geçmiş entry'ler için stale guard devre dışı bırakılır (en riskli)  
-**Sonuç:** Phase 5 başlangıç plan onayında çözülmeli — aksi halde Phase 5 başlamaz. UI'da rate girişi alanı gerekip gerekmediği bu adımda belirlenir.  
-**Durum:** ⚠️ Açık karar — Phase 5 başlangıcında kapanacak
+**Karar:** Seçenek 1 — `fx_rate_override` optional field. `POST /api/v1/transactions/` payload'ına isteğe bağlı `fx_rate_override: Decimal` eklenir. Gönderilirse `convert()` atlanır, bu değer doğrudan `fx_rate_snapshot` ve `amount_base` hesabında kullanılır. Gönderilmezse mevcut fallback + stale guard davranışı korunur.  
+**Gerekçe:** Seçenek 2 kullanıcıya 2 adımlı iş yükü bindiriyor; Seçenek 3 precision güvencesini kırıyor; Seçenek 1 mevcut `convert()` imzasına minimal ek, kullanıcıya tam kontrol.  
+**Sonuç:** Phase 5 transaction create/update flow'unda uygulanacak. UI'da "Override FX Rate" opsiyonel alan olarak sunulacak (Phase 6+).  
+**Durum:** ✅ Aktif (Phase 5'te implement edilecek)

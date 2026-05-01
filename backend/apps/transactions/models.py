@@ -8,7 +8,6 @@ from django.db import models
 from apps.categories.models import Category
 from common.models import SoftDeleteModel, TimestampedModel
 
-
 User = get_user_model()
 
 INCOME = "income"

@@ -8,7 +8,7 @@ from typing import Any, cast
 from django.db import transaction as db_transaction
 
 from apps.recurring.models import RecurringTemplate
-from common.exceptions import RecurringTemplateInvalidError, RecurringTemplateNotFoundError
+from common.exceptions import RecurringTemplateInvalidError
 
 
 def create_recurring_template(
