@@ -149,6 +149,7 @@ REST_FRAMEWORK: dict = {
     "PAGE_SIZE": 25,
     "EXCEPTION_HANDLER": "common.exceptions.drf_exception_handler",
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
+    "URL_FORMAT_OVERRIDE": None,
 }
 
 # JWT
