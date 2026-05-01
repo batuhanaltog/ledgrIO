@@ -27,7 +27,7 @@ Ledgr.io is a high-level Fintech SaaS platform for budget and portfolio manageme
 - **Frontend:** React functional components + TanStack Query. ShadcnUI for primitives, Tailwind for styling. Avoid generic AI-styled UI — aim for distinctive, professional design.
 
 ## 🧪 Testing Standards
-- Target: minimum **90% test coverage** (current: 73% — skeleton only).
+- Target: minimum **90% test coverage** (current: **91%** after Phase 1).
 - Backend: `pytest` + `factory-boy`. Focus on edge cases in financial logic.
 - Frontend: Vitest unit tests; E2E for critical flows.
 
@@ -68,8 +68,8 @@ ledgrIO/
 
 | Faz | Durum | Açıklama |
 |---|---|---|
-| **1. Repo iskelet + Docker** | ✅ **Tamamlandı** | `docker compose up` ile postgres/redis/backend/celery worker+beat çalışır. Health endpoint `database` + `redis` ok döner. |
-| 2. Auth/Users (JWT) | ⏳ Pending | Email login, register/login/refresh/logout, UserProfile |
+| **1. Repo iskelet + Docker** | ✅ Tamamlandı | `docker compose up` ile postgres/redis/backend/celery worker+beat çalışır. Health endpoint `database` + `redis` ok döner. |
+| **2. Auth/Users (JWT)** | ✅ **Tamamlandı** | Email-based custom User + UserProfile (auto via signal). Endpoints: `/auth/register/`, `/auth/login/`, `/auth/refresh/`, `/auth/logout/` (blacklist), `/users/me/` (GET + PATCH). 27 test, %91 cov. TDD: red → green → refactor. |
 | 3. Currencies + FX | ⏳ Pending | Currency, FxRate, daily Celery beat fetch, Redis-cached `convert()` |
 | 4. Transactions + Categories | ⏳ Pending | Multi-currency snapshot, hiyerarşik kategori, window function summary |
 | 5. Budgets + Alerts | ⏳ Pending | Budget snapshots, threshold alerts, Celery beat |
@@ -84,3 +84,6 @@ ledgrIO/
 - **Multi-service docker-compose:** Aynı kod tabanını 3 servisten kullanırken her servise ayrı `build:` koyma — bir image build edip `image:` ile referansla. Yoksa stale image bug'ı (örn. `ModuleNotFoundError: environ`) yaşarsın.
 - **Health endpoint başlangıçtan itibaren:** Container healthcheck için zorunlu; ayrıca smoke test'in tek satırlık karşılığı.
 - **Celery deprecation:** `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True` set et, yoksa Celery 6.0'a kadar warning üretir.
+- **Custom User model timing:** `AUTH_USER_MODEL`'i mutlaka **ilk migrate'ten önce** set et. Sonradan eklersen `InconsistentMigrationHistory` çıkar — dev'de fix: `docker compose down -v` (volume'ü siler).
+- **Phase boundary trade-off:** `User.default_currency_code` şu an `CharField(3)` + regex validator. Phase 2'de `Currency` modeli geldiğinde data migration ile FK'ya promote edilecek (`apps/users/migrations/000X_currency_fk.py`).
+- **simplejwt + custom User:** `TokenObtainPairSerializer.username_field = User.USERNAME_FIELD` set etmek `email` ile login için yeterli — ekstra view yazma.

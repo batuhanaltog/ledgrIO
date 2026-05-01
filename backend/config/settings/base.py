@@ -43,7 +43,10 @@ THIRD_PARTY_APPS: Final[list[str]] = [
 
 LOCAL_APPS: Final[list[str]] = [
     "common",
+    "apps.users",
 ]
+
+AUTH_USER_MODEL = "users.User"
 
 INSTALLED_APPS: list[str] = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
