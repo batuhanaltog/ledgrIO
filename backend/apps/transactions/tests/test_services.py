@@ -8,6 +8,7 @@ import pytest
 from apps.categories.tests.factories import SystemCategoryFactory
 from apps.currencies.tests.factories import CurrencyFactory, FxRateFactory
 from apps.transactions.models import Transaction
+from apps.transactions.selectors import get_transaction_list, get_transaction_summary
 from apps.transactions.services import (
     create_transaction,
     soft_delete_transaction,
@@ -159,3 +160,66 @@ def test_soft_delete_other_user_transaction_raises(db):
     tx = TransactionFactory(user=other)
     with pytest.raises(TransactionNotFoundError):
         soft_delete_transaction(transaction=tx, user=user)
+
+
+@pytest.mark.django_db
+def test_get_transaction_list_filters_by_type(db):
+    user = UserFactory()
+    CurrencyFactory(code="USD")
+    expense = TransactionFactory(user=user, type="expense")
+    income = TransactionFactory(user=user, type="income")
+
+    qs = get_transaction_list(user=user, filters={"type": "expense"})
+    ids = list(qs.values_list("id", flat=True))
+    assert expense.id in ids
+    assert income.id not in ids
+
+
+@pytest.mark.django_db
+def test_get_transaction_list_search_description(db):
+    user = UserFactory()
+    CurrencyFactory(code="USD")
+    tx1 = TransactionFactory(user=user, description="weekly groceries")
+    tx2 = TransactionFactory(user=user, description="netflix subscription")
+
+    qs = get_transaction_list(user=user, filters={"search": "groceries"})
+    ids = list(qs.values_list("id", flat=True))
+    assert tx1.id in ids
+    assert tx2.id not in ids
+
+
+@pytest.mark.django_db
+def test_get_transaction_list_excludes_other_users(db):
+    user = UserFactory()
+    other = UserFactory()
+    CurrencyFactory(code="USD")
+    own_tx = TransactionFactory(user=user)
+    other_tx = TransactionFactory(user=other)
+
+    qs = get_transaction_list(user=user, filters={})
+    ids = list(qs.values_list("id", flat=True))
+    assert own_tx.id in ids
+    assert other_tx.id not in ids
+
+
+@pytest.mark.django_db
+def test_get_transaction_summary_totals(db):
+    user = UserFactory()
+    user.default_currency_code = "USD"
+    user.save()
+    CurrencyFactory(code="USD")
+
+    today = date.today()
+    TransactionFactory(user=user, type="income", amount_base=Decimal("500.00"), base_currency="USD", date=today)
+    TransactionFactory(user=user, type="expense", amount_base=Decimal("200.00"), base_currency="USD", date=today)
+
+    summary = get_transaction_summary(
+        user=user,
+        date_from=today,
+        date_to=today,
+        group_by="day",
+    )
+
+    assert Decimal(summary["total_income"]) == Decimal("500.00000000")
+    assert Decimal(summary["total_expense"]) == Decimal("200.00000000")
+    assert Decimal(summary["net"]) == Decimal("300.00000000")
