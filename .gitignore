@@ -1,6 +1,8 @@
-# Python
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 *.so
 *.egg
 *.egg-info/
@@ -10,38 +12,69 @@ build/
 .venv/
 venv/
 env/
+ENV/
+
+# ── Environment ───────────────────────────────────────────────────────────────
 .env
 .env.*
 !.env.example
 
-# Django
+# ── Django ────────────────────────────────────────────────────────────────────
 *.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media/
 staticfiles/
+static/
 
-# Coverage
+# ── Testing & Coverage ────────────────────────────────────────────────────────
 .coverage
+.coverage.*
 htmlcov/
 .pytest_cache/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
 
-# Node
+# ── Node / Frontend ───────────────────────────────────────────────────────────
 node_modules/
 dist/
 .vite/
 *.local
+.npm
+.yarn/
 
-# IDE
+# ── IDE & Editors ─────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
+.vs/
 
-# OS
+# ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# Docker
+# ── Docker ────────────────────────────────────────────────────────────────────
 *.override.yml.local
+
+# ── Secrets & Keys ────────────────────────────────────────────────────────────
+*.pem
+*.key
+*.p12
+secrets/
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig
