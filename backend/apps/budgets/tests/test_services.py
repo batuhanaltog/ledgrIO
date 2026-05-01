@@ -8,9 +8,10 @@ import pytest
 from django.db import IntegrityError
 
 from apps.budgets.models import Budget
+from apps.budgets.tasks import send_budget_alerts
 from apps.budgets.tests.factories import BudgetFactory
-from apps.users.tests.factories import UserFactory
 from apps.categories.tests.factories import CategoryFactory
+from apps.users.tests.factories import UserFactory
 from common.exceptions import BudgetInvalidError
 
 
@@ -71,8 +72,8 @@ def test_budget_str():
 # Selector tests
 # ---------------------------------------------------------------------------
 
-from apps.budgets.selectors import get_budget_for_user, get_budget_queryset
 from apps.accounts.tests.factories import AccountFactory
+from apps.budgets.selectors import get_budget_for_user, get_budget_queryset
 from apps.currencies.tests.factories import CurrencyFactory
 from apps.transactions.tests.factories import TransactionFactory
 from common.exceptions import BudgetNotFoundError
@@ -468,3 +469,70 @@ def test_alert_idempotent_second_call_skipped():
 
     assert result is False
     mock_mail_2.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Beat task tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_send_budget_alerts_task_skips_when_below_threshold():
+    user = UserFactory()
+    user.default_currency_code = "USD"
+    user.save()
+    CurrencyFactory(code="USD")
+    account = AccountFactory(user=user, currency_code="USD")
+    today = date.today()
+    BudgetFactory(
+        user=user,
+        amount=Decimal("1000.00000000"),
+        date_from=today.replace(day=1),
+        date_to=today.replace(day=28),
+        alert_threshold=Decimal("0.80000000"),
+        alert_sent_at=None,
+    )
+    # 30% spent — below 80% threshold
+    TransactionFactory(
+        user=user, account=account, type="expense",
+        amount=Decimal("300.00000000"), amount_base=Decimal("300.00000000"),
+        currency_code="USD", base_currency="USD", date=today,
+    )
+
+    with patch("apps.budgets.services.send_mail") as mock_mail:
+        result = send_budget_alerts()
+
+    assert result["sent"] == 0
+    mock_mail.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_send_budget_alerts_task_sends_when_above_threshold():
+    user = UserFactory()
+    user.email = "owner@ledgr.io"
+    user.default_currency_code = "USD"
+    user.save()
+    CurrencyFactory(code="USD")
+    account = AccountFactory(user=user, currency_code="USD")
+    today = date.today()
+    budget = BudgetFactory(
+        user=user,
+        amount=Decimal("1000.00000000"),
+        date_from=today.replace(day=1),
+        date_to=today.replace(day=28),
+        alert_threshold=Decimal("0.80000000"),
+        alert_sent_at=None,
+    )
+    # 90% spent — above threshold
+    TransactionFactory(
+        user=user, account=account, type="expense",
+        amount=Decimal("900.00000000"), amount_base=Decimal("900.00000000"),
+        currency_code="USD", base_currency="USD", date=today,
+    )
+
+    with patch("apps.budgets.services.send_mail") as mock_mail:
+        result = send_budget_alerts()
+
+    assert result["sent"] == 1
+    mock_mail.assert_called_once()
+    assert Budget.objects.get(pk=budget.pk).alert_sent_at is not None
