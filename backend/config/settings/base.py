@@ -1,37 +1,53 @@
-from pathlib import Path
-from decouple import config
+"""Base Django settings shared between dev and prod."""
+from __future__ import annotations
+
 from datetime import timedelta
+from pathlib import Path
+from typing import Final
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+import environ
 
-SECRET_KEY = config("SECRET_KEY")
+BASE_DIR: Final[Path] = Path(__file__).resolve().parent.parent.parent
 
-INSTALLED_APPS = [
+env = environ.Env(
+    DJANGO_DEBUG=(bool, False),
+    DJANGO_ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
+    JWT_ACCESS_TOKEN_LIFETIME_MINUTES=(int, 15),
+    JWT_REFRESH_TOKEN_LIFETIME_DAYS=(int, 7),
+    CORS_ALLOWED_ORIGINS=(list, []),
+)
+
+SECRET_KEY: Final[str] = env("DJANGO_SECRET_KEY", default="insecure-dev-key-change-me")
+DEBUG: Final[bool] = env("DJANGO_DEBUG")
+ALLOWED_HOSTS: list[str] = env("DJANGO_ALLOWED_HOSTS")
+
+# Applications
+DJANGO_APPS: Final[list[str]] = [
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # Third-party
+]
+
+THIRD_PARTY_APPS: Final[list[str]] = [
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
-    "django_filters",
     "corsheaders",
+    "django_filters",
     "django_celery_beat",
-    # Local apps
-    "apps.users",
-    "apps.portfolios",
-    "apps.assets",
-    "apps.transactions",
-    "apps.budgets",
-    "apps.reports",
-    "apps.notifications",
 ]
 
-MIDDLEWARE = [
+LOCAL_APPS: Final[list[str]] = [
+    "common",
+]
+
+INSTALLED_APPS: list[str] = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+
+MIDDLEWARE: list[str] = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -44,8 +60,10 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "config.urls"
+WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
 
-TEMPLATES = [
+TEMPLATES: list[dict] = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [],
@@ -61,73 +79,75 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "config.wsgi.application"
+# Database
+DATABASES: dict[str, dict] = {
+    "default": env.db_url("DATABASE_URL"),
+}
+DATABASES["default"].setdefault("CONN_MAX_AGE", 60)
 
-DATABASES = {
+# Cache (Redis)
+CACHES: dict[str, dict] = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("POSTGRES_DB", default="ledgrio"),
-        "USER": config("POSTGRES_USER", default="ledgrio_user"),
-        "PASSWORD": config("POSTGRES_PASSWORD", default="ledgrio_password"),
-        "HOST": config("DB_HOST", default="db"),
-        "PORT": config("DB_PORT", default="5432"),
-        "OPTIONS": {
-            "connect_timeout": 10,
-        },
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": env("REDIS_URL", default="redis://redis:6379/0"),
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
     }
 }
 
-AUTH_USER_MODEL = "users.User"
+# Password hashing — argon2 first
+PASSWORD_HASHERS: list[str] = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+]
 
-AUTH_PASSWORD_VALIDATORS = [
+AUTH_PASSWORD_VALIDATORS: list[dict] = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 10}},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# I18N
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+# Static / Media
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
+# DRF
+REST_FRAMEWORK: dict = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ],
-    "DEFAULT_PERMISSION_CLASSES": [
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
-    ],
-    "DEFAULT_FILTER_BACKENDS": [
+    ),
+    "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
-        "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
-    ],
-    "DEFAULT_PAGINATION_CLASS": "common.pagination.StandardResultsPagination",
-    "PAGE_SIZE": 20,
+        "rest_framework.filters.SearchFilter",
+    ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.UserRateThrottle",
-    ],
-    "DEFAULT_THROTTLE_RATES": {
-        "anon": "100/hour",
-        "user": "1000/hour",
-    },
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.CursorPagination",
+    "PAGE_SIZE": 25,
+    "EXCEPTION_HANDLER": "common.exceptions.drf_exception_handler",
+    "TEST_REQUEST_DEFAULT_FORMAT": "json",
 }
 
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=config("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", default=60, cast=int)),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=config("JWT_REFRESH_TOKEN_LIFETIME_DAYS", default=7, cast=int)),
+# JWT
+SIMPLE_JWT: dict = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env("JWT_ACCESS_TOKEN_LIFETIME_MINUTES")),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=env("JWT_REFRESH_TOKEN_LIFETIME_DAYS")),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
@@ -135,49 +155,48 @@ SIMPLE_JWT = {
     "USER_ID_CLAIM": "user_id",
 }
 
-SPECTACULAR_SETTINGS = {
-    "TITLE": "LedgrIO API",
-    "DESCRIPTION": "Smart Budget & Portfolio Management API",
-    "VERSION": "1.0.0",
+# Spectacular (OpenAPI)
+SPECTACULAR_SETTINGS: dict = {
+    "TITLE": "Ledgr.io API",
+    "DESCRIPTION": "Akıllı bütçe ve portföy yönetimi platformu API'si",
+    "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
-    "SWAGGER_UI_SETTINGS": {
-        "persistAuthorization": True,
-    },
 }
 
-CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://redis:6379/0")
-CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default="redis://redis:6379/0")
-CELERY_ACCEPT_CONTENT = ["json"]
+# CORS
+CORS_ALLOWED_ORIGINS: list[str] = env("CORS_ALLOWED_ORIGINS")
+CORS_ALLOW_CREDENTIALS = True
+
+# Celery
+CELERY_BROKER_URL: str = env("CELERY_BROKER_URL", default="redis://redis:6379/1")
+CELERY_RESULT_BACKEND: str = env("CELERY_RESULT_BACKEND", default="redis://redis:6379/2")
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
-CELERY_TIMEZONE = "UTC"
-CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 60 * 5
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
-LOGGING = {
+# Logging — basic structured-ish setup
+LOGGING: dict = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "json": {
-            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-            "format": "%(asctime)s %(name)s %(levelname)s %(message)s",
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name} {message}",
+            "style": "{",
         },
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "json",
+            "formatter": "verbose",
         },
     },
-    "root": {
-        "handlers": ["console"],
-        "level": "INFO",
-    },
+    "root": {"handlers": ["console"], "level": "INFO"},
     "loggers": {
-        "django": {
-            "handlers": ["console"],
-            "level": "INFO",
-            "propagate": False,
-        },
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
 }

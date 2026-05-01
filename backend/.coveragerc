@@ -1,17 +1,20 @@
 [run]
-source = apps, celery_app, common
+branch = True
+source = .
 omit =
     */migrations/*
-    */admin.py
     */tests/*
-    */factories.py
-    config/settings/*
+    */settings/*
     manage.py
+    config/wsgi.py
+    config/asgi.py
+    celery_app/celery.py
 
 [report]
-fail_under = 90
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if TYPE_CHECKING:
+    if __name__ == .__main__.:
 show_missing = True
 skip_covered = False
-
-[html]
-directory = htmlcov

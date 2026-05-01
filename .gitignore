@@ -1,80 +1,56 @@
-# ── Python ────────────────────────────────────────────────────────────────────
+# Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*$py.class
 *.so
-*.egg
+.Python
 *.egg-info/
-dist/
-build/
-.eggs/
+.installed.cfg
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+
+# Virtualenv
 .venv/
 venv/
 env/
-ENV/
 
-# ── Environment ───────────────────────────────────────────────────────────────
-.env
-.env.*
-!.env.example
-
-# ── Django ────────────────────────────────────────────────────────────────────
+# Django
 *.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media/
 staticfiles/
-static/
 
-# ── Testing & Coverage ────────────────────────────────────────────────────────
-.coverage
-.coverage.*
-htmlcov/
-.pytest_cache/
-.tox/
-nosetests.xml
-coverage.xml
-*.cover
+# Env
+.env
+.env.*
+!.env.example
 
-# ── Node / Frontend ───────────────────────────────────────────────────────────
+# Node
 node_modules/
 dist/
+build/
 .vite/
-*.local
-.npm
-.yarn/
+*.tsbuildinfo
 
-# ── IDE & Editors ─────────────────────────────────────────────────────────────
-.vscode/
+# Editors
 .idea/
+.vscode/
 *.swp
 *.swo
-*.sublime-project
-*.sublime-workspace
-.vs/
-
-# ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
-desktop.ini
 
-# ── Docker ────────────────────────────────────────────────────────────────────
-*.override.yml.local
+# Docker
+.docker/
 
-# ── Secrets & Keys ────────────────────────────────────────────────────────────
-*.pem
-*.key
-*.p12
-secrets/
-
-# ── Misc ──────────────────────────────────────────────────────────────────────
-*.bak
-*.tmp
-*.orig
+# Claude Code (local settings + plans)
+.claude/

@@ -1,21 +1,16 @@
-from .base import *
+"""Development-only Django settings."""
+from __future__ import annotations
+
+from .base import *  # noqa: F403
+from .base import INSTALLED_APPS
 
 DEBUG = True
-
 ALLOWED_HOSTS = ["*"]
 
-INSTALLED_APPS += ["debug_toolbar"]
+INSTALLED_APPS = [*INSTALLED_APPS, "django_extensions"]
 
-MIDDLEWARE = ["debug_toolbar.middleware.DebugToolbarMiddleware"] + MIDDLEWARE
-
-INTERNAL_IPS = ["127.0.0.1"]
-
+# Looser CORS in dev
 CORS_ALLOW_ALL_ORIGINS = True
 
-# DB_HOST defaults to "db" (Docker service name) in base.py.
-# Override with DB_HOST=localhost in .env when running outside Docker.
-
-CELERY_TASK_ALWAYS_EAGER = False
-CELERY_TASK_EAGER_PROPAGATES = True
-
+# Print emails to console
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

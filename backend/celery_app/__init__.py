@@ -1,3 +1,5 @@
-from .celery import app as celery_app
+from __future__ import annotations
 
-__all__ = ("celery_app",)
+from .celery import app
+
+__all__ = ("app",)

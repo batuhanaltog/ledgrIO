@@ -1,48 +1,86 @@
-# LedgrIO — Claude Context
+# Ledgr.io — Claude Code Project Guide
 
-## Proje
-Fintech SaaS: borsa/kripto/harcama takibi, CSV/PDF export, bütçe uyarıları.
-Repo: https://github.com/batuhanaltog/ledgrIO
+## 🚀 Project Overview
+Ledgr.io is a high-level Fintech SaaS platform for budget and portfolio management (Stocks, Crypto, Personal Expenses).
 
-## Stack
-- **Backend:** Django 5 + DRF + simplejwt + drf-spectacular (Swagger) + Celery + Redis + PostgreSQL
-- **Frontend:** React 18 + TypeScript + Vite + TanStack (Query/Router/Table) + shadcn/ui + Tailwind + Recharts + Axios + Zustand
-- **Infra:** Docker Compose (backend, frontend, db, redis, celery_worker, celery_beat, flower, nginx)
+**Tech Stack:** Django 5 (DRF) · React 18 (Vite + TypeScript) · PostgreSQL 16 · Redis 7 · Celery · Docker.
+**Key Focus:** Financial precision (Decimal), scalability, rigorous testing.
 
-## Yapı
+## 🛠 Build & Run Commands
+- Stack: `docker-compose up -d --build`
+- Backend test + cov: `docker-compose exec backend pytest --cov=. --cov-report=term-missing`
+- Frontend dev: `cd frontend && npm run dev`
+- Migrations: `docker-compose exec backend python manage.py migrate`
+- Lint (Python): `docker-compose exec backend ruff check .`
+- Type check: `docker-compose exec backend mypy .`
+
+**Endpoints (live):**
+- Health: http://localhost:8000/api/v1/health/
+- Swagger: http://localhost:8000/api/v1/docs/
+- Admin: http://localhost:8000/admin/
+
+## 🏗 Architectural Rules (Strict)
+- **Service Pattern:** All business logic MUST reside in `services.py`. Models hold data; views handle request/response only. Read queries go in `selectors.py`.
+- **Financial Precision:** Never use `Float` for currency. Always `DecimalField(max_digits=20, decimal_places=8)` and Python `decimal.Decimal`.
+- **Type Hinting:** Mandatory for all Python functions and TS components. Use `Final`, `Literal`, `TypedDict` where applicable.
+- **API Design:** RESTful + versioned under `/api/v1/`. Every endpoint documented via drf-spectacular OpenAPI.
+- **Frontend:** React functional components + TanStack Query. ShadcnUI for primitives, Tailwind for styling. Avoid generic AI-styled UI — aim for distinctive, professional design.
+
+## 🧪 Testing Standards
+- Target: minimum **90% test coverage** (current: 73% — skeleton only).
+- Backend: `pytest` + `factory-boy`. Focus on edge cases in financial logic.
+- Frontend: Vitest unit tests; E2E for critical flows.
+
+## 📝 Code Style
+- Backend: PEP 8, ruff lint, methods descriptive (`calculate_portfolio_weighted_return`, not `calc_return`).
+- Frontend: Tailwind CSS, prefer `interface` over `type` for object shapes in TS.
+- Git: atomic commits with prefix (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`).
+
+## 📊 Monitoring & DevOps
+- CI/CD: Jenkins pipeline (planned).
+- Observability: Grafana + Prometheus exporter (Phase 8).
+- Error tracking: Sentry (wired in `config/settings/production.py`, requires `SENTRY_DSN`).
+
+---
+
+## 📦 Repo Layout
+
 ```
-backend/
-  apps/          # users, portfolios, assets, transactions, budgets, reports, notifications
-  celery_app/    # tasks: report_tasks.py, alert_tasks.py
-  common/        # TimestampedModel, decimal_utils, pagination
-  config/        # settings/base|development|production, urls, wsgi
-frontend/
-  src/api/       # Axios client + JWT refresh interceptor
-  src/store/     # Zustand auth store
-nginx/ docker-compose.yml docker-compose.override.yml
+ledgrIO/
+├── docker-compose.yml + docker-compose.override.yml   # tek paylaşılan image: ledgrio-backend:latest
+├── .env.example
+├── nginx/nginx.conf
+├── backend/
+│   ├── Dockerfile, manage.py, pytest.ini, .coveragerc, pyproject.toml
+│   ├── requirements/{base,development,production}.txt
+│   ├── config/{__init__.py, settings/{base,development,production}.py, urls.py, wsgi.py, asgi.py}
+│   ├── celery_app/{__init__.py, celery.py, tasks/...}
+│   ├── common/                  # shared abstract models, health, exceptions
+│   └── apps/                    # users, currencies, transactions, budgets (eklenecek)
+└── frontend/                    # eklenecek
 ```
 
-## Fazlar
-- [x] **Faz 1 — Foundation:** Docker, Django scaffold, tüm modeller + migration'lar, CRUD API'lar, factory_boy testleri
-- [ ] **Faz 2 — İş Mantığı:** Window Function / CTE testleri, django-filter, budget alert logic, Celery tasks, CSV/PDF generator, dashboard endpoint, test coverage %90+
-- [ ] **Faz 3 — Frontend:** TanStack Router/Query/Table, shadcn/ui tema, auth + dashboard + portfolio + transaction + budget + reports sayfaları, Recharts, RHF + Zod
-- [ ] **Faz 4 — Polish + Export:** CSV/PDF E2E, notification bell, Nginx prod config, rate limiting, multi-stage Docker build
-- [ ] **Faz 5 — Observability + CI/CD:** django-prometheus, Grafana + Prometheus, Jenkins pipeline, structured JSON logging
+**Çoklu servis tek image:** `backend`, `celery_worker`, `celery_beat` aynı `ledgrio-backend:latest` image'ini kullanır. Bağımlılık değişikliklerinde `docker compose build backend` yeterlidir; ayrı build gerekmez.
 
-## Mevcut Durum (Faz 1 tamamlandı)
-- Tüm modeller, migration'lar, CRUD API'lar yazıldı
-- `docker-compose up --build` çalışıyor, tüm servisler UP
-- Migration'lar backend startup'ında otomatik çalışıyor (`migrate --noinput`)
-- Swagger: http://localhost:8000/api/schema/swagger-ui/
-- Frontend: http://localhost:3000 (App.tsx placeholder, Faz 3'te doldurulacak)
-- Flower: http://localhost:5555
+---
 
-## Sonraki Adım — Faz 2
-Window Function / CTE sorgularını test et, django-filter entegrasyonu,
-budget alert logic, Celery tasks (report + alert), CSV/PDF generator,
-dashboard aggregate endpoint, test coverage %90+.
+## 🗺️ Faz Planı
 
-## Kurallar
-- Push'u kullanıcı ister, otomatik push atma
-- Migration değişikliğinde `docker-compose run --rm backend python manage.py makemigrations` çalıştır
-- Test: `docker-compose exec backend pytest --cov`
+| Faz | Durum | Açıklama |
+|---|---|---|
+| **1. Repo iskelet + Docker** | ✅ **Tamamlandı** | `docker compose up` ile postgres/redis/backend/celery worker+beat çalışır. Health endpoint `database` + `redis` ok döner. |
+| 2. Auth/Users (JWT) | ⏳ Pending | Email login, register/login/refresh/logout, UserProfile |
+| 3. Currencies + FX | ⏳ Pending | Currency, FxRate, daily Celery beat fetch, Redis-cached `convert()` |
+| 4. Transactions + Categories | ⏳ Pending | Multi-currency snapshot, hiyerarşik kategori, window function summary |
+| 5. Budgets + Alerts | ⏳ Pending | Budget snapshots, threshold alerts, Celery beat |
+| 6. Frontend skeleton + Auth | ⏳ Pending | Vite/React/TS, Tailwind, ShadcnUI, profesyonel tasarım |
+| 7. Frontend transactions + dashboard | ⏳ Pending | RHF + Zod formlar, TanStack Query, kategori grafiği |
+| 8+ (sonraki) | — | Assets/Portfolios → Reports/Export → Notifications → Observability |
+
+---
+
+## ⚠️ Solo-Dev Tuzakları (öğrenilenler)
+
+- **Multi-service docker-compose:** Aynı kod tabanını 3 servisten kullanırken her servise ayrı `build:` koyma — bir image build edip `image:` ile referansla. Yoksa stale image bug'ı (örn. `ModuleNotFoundError: environ`) yaşarsın.
+- **Health endpoint başlangıçtan itibaren:** Container healthcheck için zorunlu; ayrıca smoke test'in tek satırlık karşılığı.
+- **Celery deprecation:** `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True` set et, yoksa Celery 6.0'a kadar warning üretir.
