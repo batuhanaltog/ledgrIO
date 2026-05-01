@@ -52,8 +52,9 @@ Thumbs.db
 # Docker
 .docker/
 
-# Claude Code (local settings + plans)
+# Claude Code (local settings, plans, memory)
 .claude/
+CLAUDE.md
 
 # Git worktrees
 .worktrees/

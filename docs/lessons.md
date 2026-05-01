@@ -1,0 +1,54 @@
+# Solo-Dev Lessons Learned
+
+Bilinçli trade-off'lar ve öğrenilen dersler. **Bu dosyadaki kararlar değiştirilmeden önce sorulmalı** — çoğu kasıtlı seçimdir.
+
+---
+
+## Docker & Infrastructure
+
+- **Multi-service single image:** `backend`, `celery_worker`, `celery_beat` tek `ledgrio-backend:latest` image'ını paylaşır. Her servise ayrı `build:` bloku koyma — stale image bug'ı çıkar (`ModuleNotFoundError: environ`). `image:` ile referansla.
+- **Health endpoint from day one:** Container healthcheck + smoke test tek satır. İlk fazdan kur.
+- **Celery deprecation:** `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True` set et.
+- **Custom User model timing:** `AUTH_USER_MODEL` ilk `migrate`'ten önce set edilmeli. Sonradan eklemek `InconsistentMigrationHistory` çıkarır. Dev fix: `docker compose down -v`.
+- **Celery beat + DatabaseScheduler:** `CELERY_BEAT_SCHEDULE` setting `DatabaseScheduler` ile okunmaz. Beat task'lerini data migration ile kayıt et (bkz. `apps/currencies/migrations/0003_register_daily_fx_beat.py`). Migration dependency olarak `django_celery_beat`'in son migration'ını ekle.
+
+## Django ORM & Models
+
+- **Historical models in migrations:** `apps.get_model()` tarihi model döner, custom manager yok. `.objects.all()` kullan, `all_objects` çalışmaz.
+- **SoftDeleteModel contract:** `Model.objects` deleted satırları filtreler. Admin/audit/restore için `Model.all_objects`. `base_manager_name = "all_objects"` set et — FK reverse lookup'lar (cascade) deleted satırları görsün.
+- **UnorderedObjectListWarning:** Her list view'da explicit `.order_by()` zorunlu. Pagination'da sessiz bozulma olur.
+- **`python -c` + Django ORM:** Container içinde Django setup çalışmaz. `python manage.py shell -c "..."` kullan.
+- **django-stubs model resolution:** Model definition `models.py`'da olmalı. Başka modülde tanımlanırsa `.objects` `attr-defined` hatası verir.
+
+## Auth & Security
+
+- **JWT logout semantics:** `/auth/logout/` sadece **refresh token**'ı blacklistler. Access token TTL (15 dk) dolana kadar çalışır. Bu bilinçli trade-off — stateless JWT değerini korumak için. Frontend access token'ı hemen düşürmeli.
+- **Email normalization:** `normalize_email`'i override et — hem local hem domain lowercase. Aksi halde `Bob@LEDGR.IO` ile login 401 atar.
+- **django-ratelimit + DRF 429:** `Ratelimited` exception `PermissionDenied` subclass'ı, DRF default 403 render eder. `drf_exception_handler`'da intercept edip 429 + `RATE_LIMITED` envelope döndür.
+- **SECRET_KEY:** Default kaldırıldı. `DJANGO_SECRET_KEY` env var yoksa container fail-fast. CI'da synthetic secret olarak commit SHA kullan.
+- **Password reset enumeration:** Request endpoint her zaman 200 döner — kullanıcı bulunamasa bile. Enumerate önlemek için tasarım gereği.
+
+## Financial Precision
+
+- **FX snapshot pattern:** `FxRate` rate kayıt anında store edilir, eski transaction'lar değişmez. `convert()` direct rate yoksa inverse dener; ikisi de yoksa en yakın tarihe fallback. Bu bilinçli mimari kararı (bkz. D-004).
+- **Quantize sadece sonda:** `amount * raw_rate` sonrası tek 8dp quantize. `_lookup_rate` ham Decimal döner — mid-chain quantize = compounding rounding hatası.
+- **Rounding standard:** `ROUND_HALF_EVEN` (banker's rounding) her yerde. `common/money.py:q()` tek giriş noktası.
+- **`current_balance` hesaplama:** Account balance asla saklanmaz — `Subquery` annotation ile compute edilir. Stored derived value = tutarsızlık riski.
+
+## Testing & Type Checking
+
+- **mypy + Django:** `disallow_any_generics=false`, stub'sız paketler `[[tool.mypy.overrides]]` ile ignore. Sonrası temiz ve yönetilebilir.
+- **factory-boy SelfAttribute:** Nested SubFactory'lerde user FK zinciri: `factory.SelfAttribute("..user")`.
+- **Coverage tiered:** services/selectors %90, views %75, proje geneli %80 (CI enforce). Layer floor'lar faz sonu manuel audit.
+- **Transaction.account FK migration:** Sadece test verisi vardı, wipe edildi. Production'da bu olmaz — migration planı gerekir.
+
+## Serializer & API
+
+- **CursorPagination + custom field:** Küçük enumerable tablolarda `PageNumberPagination` kullan. Default `CursorPagination` `created` field bekler → `FieldError`.
+- **simplejwt + custom User:** `TokenObtainPairSerializer.username_field = User.USERNAME_FIELD` email login için yeterli, ekstra view gerekmez.
+- **Email verification production:** Backend çalışıyor (token + endpoint + console mail). Production'a çıkmadan `EMAIL_BACKEND` Mailgun/Anymail'e çevrilmeli.
+
+## Process
+
+- **Tamamlanmış faz = donmuş:** Bug fix haricinde tamamlanmış fazlar yeniden açılmaz. Yeni feature = yeni faz. Aksi halde "neredeyiz" sinyali bozulur.
+- **Plan onayı ucuz, yanlış kod pahalı:** Her faz başında model şeması + endpoint listesi + service imzaları onaylanmadan kod yazılmaz.
