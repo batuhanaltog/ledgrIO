@@ -1,70 +1,155 @@
 # Ledgr.io — Claude Code Project Guide
 
-## 🚀 Project Overview
-Ledgr.io is a **personal/family-scale** finance tracker — income/expense, debts, recurring entries, multi-account balance, basic investments, budgets and alerts. Single-user (or a household of a few) is the design point. Multi-tenant SaaS assumptions are explicitly out of scope (see `docs/ARCHITECTURE_RULES.md` §0).
+---
 
-**Tech Stack:** Django 5 (DRF) · React 18 (Vite + TypeScript) · PostgreSQL 16 · Redis 7 · Celery · Docker.
-**Key Focus:** Financial precision (Decimal), correctness over scale, disciplined testing.
+## 📍 Current State
+
+| Key | Value |
+|---|---|
+| **Active Phase** | 5 — Budgets + Alerts |
+| **Last Completed** | Phase 4.5 — Accounts + Debts + Recurring (2026-05-01) |
+| **Next Action** | Phase 5 plan: Budget model + threshold alert service skeleton |
+| **Open Decisions** | Budget recurring projection: recurring template'leri usage hesabında say? |
+| **Tech Debt / Known Issues** | None |
+
+> **Session başlangıcında bu bloğu oku, sonra bootstrap prompt'u uygula.**
+
+---
+
+## 🚀 Project Overview
+
+Personal/family-scale finance tracker — income/expense, multi-account balance, debts, recurring entries, budgets and alerts. Single-user or small household is the design point. **Multi-tenant SaaS assumptions are out of scope** (see `docs/ARCHITECTURE_RULES.md` §0).
+
+**Stack:** Django 5 (DRF) · PostgreSQL 16 · Redis 7 · Celery · React 18/Vite/TS (Phase 6+) · Docker  
+**Key focus:** Financial precision (Decimal), correctness over scale, disciplined testing.
+
+---
+
+## 🔁 Session Workflow
+
+### Bootstrap Prompt (kopyala-yapıştır, her /clear sonrası)
+
+```
+Yeni session. Sırayla yap, kod yazma:
+1. CLAUDE.md "Current State" bloğunu özetle.
+2. docs/decisions.md'nin son 3 kararını oku.
+3. Aktif faz için ilk somut adımı öner (plan, implementasyon değil).
+4. Onay bekle.
+Not: docs/lessons.md'deki kararlar bilinçli trade-off'lardır — değiştirmeyi önermeden önce sor.
+```
+
+### Faz Başlangıç Prompt'u (yeni faz açılırken)
+
+```
+Faz N başlıyor. Kod yazmadan önce şunları üret:
+1. Model şeması (alanlar + tipler + ilişkiler + constraint'ler)
+2. Endpoint listesi (URL + method + amaç + auth)
+3. Service fonksiyon imzaları (input/output tipleri)
+4. Test stratejisi (ne mock'lanacak, coverage hedefi)
+Onayladıktan sonra TDD ile implementasyona geç.
+```
+
+### Faz Bitiş Prompt'u (DoD sonrası dokümantasyon)
+
+```
+Faz N tamamlandı. Şu güncellemeleri yap, önce diff göster:
+1. CLAUDE.md → "Current State" bloğunu güncelle (Active Phase = N+1)
+2. CLAUDE.md → Faz tablosunda N'i ✅ yap + kısa özet
+3. CLAUDE.md → "Endpoints (live)" listesine yeni endpoint'leri ekle
+4. CLAUDE.md → Mevcut test/coverage sayısını güncelle
+5. docs/lessons.md → Yeni öğrenimler varsa ekle
+6. docs/decisions.md → Yeni mimari kararları ADR olarak ekle
+Sonra: git tag phase-N-complete && DB backup.
+```
+
+---
+
+## ✅ Definition of Done (her faz için)
+
+- [ ] Tüm endpoint'ler çalışıyor ve Swagger'da görünüyor
+- [ ] `pytest --cov-fail-under=80` geçiyor (proje geneli)
+- [ ] services/selectors %90+, views %75+ (manuel audit)
+- [ ] `ruff check .` temiz
+- [ ] `mypy .` 0 hata
+- [ ] ARCHITECTURE_RULES.md ihlali yok
+- [ ] CLAUDE.md "Current State" güncellendi
+- [ ] Yeni endpoint'ler "Endpoints (live)" listesine eklendi
+- [ ] Yeni öğrenimler `docs/lessons.md`'e eklendi
+- [ ] Yeni kararlar `docs/decisions.md`'e ADR olarak eklendi
+- [ ] Manuel smoke test: en az 1 happy path curl/Postman
+- [ ] `git tag phase-N-complete` atıldı
+- [ ] DB backup alındı
+
+---
 
 ## 🛠 Build & Run Commands
-- Stack: `docker compose up -d --build`
-- Backend test + cov: `docker compose exec backend pytest --cov=. --cov-report=term-missing`
-- Frontend dev: `cd frontend && npm run dev` (Phase 6+)
-- Migrations: `docker compose exec backend python manage.py migrate`
-- Lint: `docker compose exec backend ruff check .`
-- Type check: `docker compose exec backend mypy .`
-- Reset dev DB: `docker compose down -v; docker compose up -d`
+
+```bash
+docker compose up -d --build          # stack başlat
+docker compose exec backend pytest --cov=. --cov-report=term-missing
+docker compose exec backend ruff check .
+docker compose exec backend mypy .
+docker compose exec backend python manage.py migrate
+docker compose down -v && docker compose up -d   # dev DB sıfırla
+```
 
 **Endpoints (live):**
-- Health: http://localhost:8000/api/v1/health/
-- Swagger: http://localhost:8000/api/v1/docs/
-- Admin: http://localhost:8000/admin/
+- Health: `GET /api/v1/health/`
+- Swagger: `GET /api/v1/docs/`
 - Auth: `POST /api/v1/auth/{register,login,refresh,logout,verify-email,password-reset,password-reset/confirm}/`
 - Users: `GET/PATCH /api/v1/users/me/`
-- Currencies: `GET /api/v1/currencies/`, `GET /api/v1/fx/?base=X&quote=Y[&date=Z]`
-- Accounts: `GET/POST /api/v1/accounts/`, `GET/PATCH/DELETE /api/v1/accounts/<pk>/`, `GET /api/v1/accounts/summary/`
-- Transactions: `GET/POST /api/v1/transactions/`, `GET/PATCH/DELETE /api/v1/transactions/<pk>/`, `GET /api/v1/transactions/summary/`
-- Debts: `GET/POST /api/v1/debts/categories/`, `PATCH/DELETE /api/v1/debts/categories/<pk>/`, `GET/POST /api/v1/debts/`, `GET/PATCH/DELETE /api/v1/debts/<pk>/`, `POST /api/v1/debts/<pk>/payments/`, `DELETE /api/v1/debts/<pk>/payments/<ppk>/`, `GET /api/v1/debts/monthly-summary/`
-- Recurring: `GET/POST /api/v1/recurring/`, `GET/PATCH/DELETE /api/v1/recurring/<pk>/`
+- Currencies: `GET /api/v1/currencies/` · `GET /api/v1/fx/?base=X&quote=Y[&date=Z]`
+- Accounts: `GET/POST /api/v1/accounts/` · `GET/PATCH/DELETE /api/v1/accounts/<pk>/` · `GET /api/v1/accounts/summary/`
+- Transactions: `GET/POST /api/v1/transactions/` · `GET/PATCH/DELETE /api/v1/transactions/<pk>/` · `GET /api/v1/transactions/summary/`
+- Categories: `GET/POST /api/v1/categories/` · `GET/PATCH/DELETE /api/v1/categories/<pk>/`
+- Debts: `GET/POST /api/v1/debts/categories/` · `PATCH/DELETE /api/v1/debts/categories/<pk>/` · `GET/POST /api/v1/debts/` · `GET/PATCH/DELETE /api/v1/debts/<pk>/` · `POST /api/v1/debts/<pk>/payments/` · `DELETE /api/v1/debts/<pk>/payments/<ppk>/` · `GET /api/v1/debts/monthly-summary/`
+- Recurring: `GET/POST /api/v1/recurring/` · `GET/PATCH/DELETE /api/v1/recurring/<pk>/`
+
+---
 
 ## 🏗 Architectural Rules (Strict)
-**Full ruleset:** `docs/ARCHITECTURE_RULES.md` is the source of truth. The summary below is a reminder, not a substitute.
 
-- **Service Pattern:** Business logic in `services.py`; models hold data; views handle request/response only; reads via `selectors.py` (or inline if <20 lines).
-- **Single-Responsibility APIs:** One endpoint, one action. List does not create. Create does not orchestrate emails.
-- **Financial Precision:** `DecimalField(20,8)`, `decimal.Decimal`, `ROUND_HALF_EVEN` always. Single quantize at chain end. Currency-aware display precision via `Currency.decimal_places`.
-- **Atomicity:** Any service mutating ≥2 rows uses `@transaction.atomic` (debt payment, recurring materialize, multi-step writes).
-- **No N+1:** List endpoints use `select_related` / `prefetch_related` / `Subquery` annotations. Per-row aggregation in a list = bug.
-- **FX Freshness:** 7+ days → warning flag; 30+ days → `StaleFxRateError`.
-- **Response Shape:** List = DRF paginated dict; Detail/Create/Update = bare object; Errors = uniform envelope (`common/exceptions.py`).
-- **Type Hinting:** Mandatory. `Final`, `Literal`, `TypedDict` where applicable.
-- **API Versioning:** `/api/v1/`, every endpoint documented via drf-spectacular.
-- **Frontend (Phase 6+):** React functional components + TanStack Query. ShadcnUI primitives, Tailwind. Avoid generic AI-styled UI.
+Full ruleset: `docs/ARCHITECTURE_RULES.md` — **source of truth.**
 
-## 🧪 Testing Standards (Tiered Coverage)
-- **services / selectors:** 90% floor (audited per phase, not CI-enforced)
-- **views:** 75% floor
-- **Project-wide:** 80% floor — CI enforces via `pytest --cov-fail-under=80`
-- Per-endpoint requirement: financial-calc endpoints get 5 test types (happy, auth, ownership, validation, edge); pure CRUD gets 3 (happy, auth, ownership).
-- Current: 178 tests, ~83% coverage post-Phase-4.5.
-- mypy strict-ish (`disallow_any_generics=false`); celery/environ/sentry/django_ratelimit ignored via overrides.
-- Backend: `pytest` + `factory-boy`. Frontend: Vitest + E2E for critical flows.
+- **Layers:** View → validates + delegates · Service → all writes + business logic · Selector → all reads · Model → data + constraints only
+- **Financial Precision:** `DecimalField(20,8)` · `decimal.Decimal` · `ROUND_HALF_EVEN` · single quantize at chain end · `common/money.py:q()` only
+- **Atomicity:** ≥2 row mutations → `@transaction.atomic`
+- **No N+1:** `select_related` / `prefetch_related` / `Subquery` annotations on list endpoints
+- **Soft Delete:** `Model.objects` filters deleted. `Model.all_objects` for admin/audit. Hard delete banned on financial data.
+- **Response Shape:** List = paginated · Detail/Create/Update = bare object · Errors = `{"error": {"type", "detail", "status"}}`
+- **Beat tasks:** data migration only (no `CELERY_BEAT_SCHEDULE`)
+- **Frozen phases:** Completed phases are bug-fix-only. New features open a new phase.
 
-## 🛟 Backup (Required after Phase 4.5)
-Postgres volume is the single failure point.
-- `scripts/backup_postgres.sh` — daily `pg_dump` + 7-day rotation via host cron
-- Off-site encrypted copy (rclone / S3 / Backblaze)
-- `docs/runbooks/restore-from-backup.md` — must be executed at least once. **An untested backup is not a backup.**
+---
+
+## 🧪 Testing Standards
+
+| Layer | Floor | Enforcement |
+|---|---|---|
+| services + selectors | 90% | Manuel audit, faz sonu |
+| views | 75% | Manuel audit, faz sonu |
+| Project-wide | 80% | CI `--cov-fail-under=80` |
+
+- Financial-calc endpoints: 5 test types (happy, auth, ownership, validation, edge)
+- Pure CRUD: 3 types (happy, auth, ownership)
+- **Current:** 178 tests · 83% coverage · 0 mypy errors (post Phase 4.5)
+
+---
+
+## 🛟 Backup
+
+- `scripts/backup_postgres.sh` — daily `pg_dump` + 7-day rotation (host cron, Docker dışı)
+- Off-site copy: rclone / S3 / Backblaze
+- `docs/runbooks/restore-from-backup.md` — restore drill en az 1 kez yapılmalı
+
+---
 
 ## 📝 Code Style
-- Backend: PEP 8, ruff lint, methods descriptive (`calculate_portfolio_weighted_return`, not `calc_return`).
-- Frontend: Tailwind CSS, prefer `interface` over `type` for object shapes in TS.
-- Git: atomic commits with prefix (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`).
 
-## 📊 Monitoring & DevOps
-- CI/CD: GitHub Actions (`.github/workflows/ci.yml`) — runs on every push/PR, enforces 80% coverage floor.
-- Observability: Grafana + Prometheus exporter (Phase 8).
-- Error tracking: Sentry (wired in `config/settings/production.py`, requires `SENTRY_DSN`).
+- Backend: PEP 8, ruff, descriptive method names
+- Frontend: Tailwind, `interface` over `type` for object shapes
+- Git: atomic commits with prefix (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`)
+- Git tags: `phase-N-start` faz başında, `phase-N-complete` faz sonunda
 
 ---
 
@@ -72,61 +157,49 @@ Postgres volume is the single failure point.
 
 ```
 ledgrIO/
-├── docker-compose.yml + docker-compose.override.yml   # shared image: ledgrio-backend:latest
-├── .env.example
-├── nginx/nginx.conf
+├── CLAUDE.md                          # bu dosya — session başlangıç referansı
+├── docker-compose.yml
 ├── backend/
-│   ├── Dockerfile, manage.py, pytest.ini, .coveragerc, pyproject.toml
-│   ├── requirements/{base,development,production}.txt
-│   ├── config/{__init__.py, settings/{base,development,production}.py, urls.py, wsgi.py, asgi.py}
-│   ├── celery_app/{__init__.py, celery.py, tasks/...}
-│   ├── common/                  # shared abstract models, health, exceptions, money helpers
-│   └── apps/                    # users, currencies, categories, transactions, accounts, debts, recurring, budgets (5)
-├── docs/                        # ARCHITECTURE_RULES.md, runbooks/, superpowers/specs/
-├── scripts/                     # backup_postgres.sh
-└── frontend/                    # coming Phase 6
+│   ├── common/                        # exceptions, money helpers, abstract models
+│   └── apps/
+│       ├── users/        currencies/  categories/  transactions/
+│       ├── accounts/     debts/       recurring/
+│       └── budgets/                   # Phase 5 — gelecek
+├── docs/
+│   ├── ARCHITECTURE_RULES.md          # binding rules
+│   ├── decisions.md                   # ADR — mimari kararlar
+│   ├── lessons.md                     # öğrenilen dersler + bilinçli trade-off'lar
+│   ├── runbooks/                      # restore-from-backup.md
+│   └── superpowers/specs/             # faz tasarım dokümanları
+├── scripts/
+│   └── backup_postgres.sh
+└── frontend/                          # Phase 6+
 ```
-
-**Multi-service single image:** `backend`, `celery_worker`, `celery_beat` all use `ledgrio-backend:latest`. On dependency changes, `docker compose build backend` is enough.
 
 ---
 
 ## 🗺️ Phase Plan
 
-| Phase | Status | Description |
+| Phase | Status | Notes |
 |---|---|---|
-| **1. Repo skeleton + Docker** | ✅ Done | `docker compose up` — postgres/redis/backend/celery worker+beat running. Health endpoint returns `database` + `redis` ok. |
-| **2. Auth/Users (JWT)** | ✅ Done | Email-based custom User + UserProfile (auto via signal). Endpoints: `/auth/register/`, `/auth/login/`, `/auth/refresh/`, `/auth/logout/` (blacklist), `/users/me/` (GET + PATCH). 27 tests, 91% cov. |
-| **3. Currencies + FX** | ✅ Done | `Currency` catalog (TRY/USD/EUR/GBP/JPY/BTC/ETH seed), `FxRate` snapshot. Frankfurter.dev provider, `convert()` with fallback + 1h Redis cache. Celery beat daily 06:30 UTC. |
-| **3.5. Hardening** | ✅ Done | SECRET_KEY fail-fast · SoftDeleteManager · django-ratelimit (429 envelope) · unified error taxonomy · FX single-quantize · email verification scaffold · mypy clean · GitHub Actions CI. 72 tests, 94% cov. |
-| **4. Transactions + Categories** | ✅ Done | `apps/categories/` (hierarchy, soft delete) + `apps/transactions/` (FX snapshot at write, filters, summary). ~45 new tests, 93% coverage. |
-| **4.5. Accounts + Debts + Recurring** | ✅ Done | `apps/accounts/` (current_balance via Subquery, currency locked once used) + `apps/debts/` (atomic payment flow, monthly summary vs income) + `apps/recurring/` (idempotent daily beat at 03:00 UTC) + password reset + backup infra. 178 tests, 83% cov. |
-| 5. Budgets + Alerts | ⏳ Pending | Category-based, base-currency, `date_from`/`date_to` model. Live `usage` via Subquery. Celery beat email alert, idempotent via `alert_sent_at`. |
-| 6. Frontend skeleton + Auth | ⏳ Pending | Vite/React/TS, Tailwind, ShadcnUI |
-| 7. Frontend transactions + dashboard | ⏳ Pending | RHF + Zod forms, TanStack Query, category chart |
-| 8+ | — | Investments/Portfolios → Reports/Export → Notifications → Observability |
+| 1. Repo + Docker | ✅ Done | Health endpoint, postgres/redis/celery |
+| 2. Auth/Users (JWT) | ✅ Done | Email login, UserProfile, verify-email |
+| 3. Currencies + FX | ✅ Done | Frankfurter, daily beat 06:30 UTC, Redis cache |
+| 3.5. Hardening | ✅ Done | Ratelimit, error taxonomy, mypy clean, CI |
+| 4. Transactions + Categories | ✅ Done | FX snapshot, filters, summary. ~45 tests, 93% cov |
+| 4.5. Accounts + Debts + Recurring | ✅ Done | Atomic payment flow, idempotent beat 03:00 UTC, password reset, backup infra. 178 tests, 83% cov |
+| **5. Budgets + Alerts** | ⏳ **Next** | Category-based, date_from/date_to, live usage via Subquery, Celery beat email alert |
+| 6. Frontend skeleton + Auth | ⏳ Planned | Vite/React/TS, Tailwind, ShadcnUI |
+| 7. Frontend dashboard | ⏳ Planned | TanStack Query, category chart, RHF+Zod |
+| 8+. Investments, Reports, Observability | — | |
 
 ---
 
-## ⚠️ Lessons Learned (Solo-Dev)
+## 📚 Reference Docs
 
-- **Multi-service docker-compose:** Share one image across services with `image:` reference, not separate `build:` blocks per service. Avoids stale-image bugs (`ModuleNotFoundError: environ`).
-- **Health endpoint from day one:** Container healthcheck + smoke test in one line.
-- **Celery deprecation:** Set `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True`.
-- **Custom User model timing:** Set `AUTH_USER_MODEL` before first migrate. Fix in dev: `docker compose down -v`.
-- **simplejwt + custom User:** `TokenObtainPairSerializer.username_field = User.USERNAME_FIELD` is enough for email login.
-- **CursorPagination + custom field:** Use `PageNumberPagination` for small enumerable tables to avoid `FieldError: Cannot resolve keyword 'created'`.
-- **Celery beat + DatabaseScheduler:** `CELERY_BEAT_SCHEDULE` is ignored. Register tasks via data migration (see `apps/currencies/migrations/0003_register_daily_fx_beat.py`).
-- **FX strategy:** Snapshot at write time — `fx_rate_snapshot` stored immutably. Quantize only at the outermost layer, never mid-chain.
-- **JWT logout semantics:** `/auth/logout/` blacklists only the refresh token. Access token lives until TTL (15 min). Frontend must discard access token immediately.
-- **Email normalization:** Override `normalize_email` to lowercase both local and domain parts. Otherwise case-sensitive lookup causes 401 on login.
-- **django-ratelimit + DRF 429:** `Ratelimited` is a `PermissionDenied` subclass; DRF renders it as 403 by default. Override `drf_exception_handler` to intercept and return 429.
-- **mypy + Django:** Use `disallow_any_generics=false` and `[[tool.mypy.overrides]]` to ignore untyped third-party packages (celery, environ, sentry, django_ratelimit).
-- **SoftDeleteModel contract:** `Model.objects` filters deleted rows. `Model.all_objects` for admin/audit. Set `base_manager_name = "all_objects"` for FK reverse lookups.
-- **Historical models in migrations:** `apps.get_model()` returns a historical model with no custom managers. Use `.objects.all()`, never `.all_objects`.
-- **Transaction.account FK migration:** Wipe test-only data in the migration before adding NOT NULL FK. No data migration complexity needed when there's no production data.
-- **factory-boy SelfAttribute:** Use `factory.SelfAttribute("..user")` to propagate user FK through nested SubFactory chains.
-- **UnorderedObjectListWarning:** Every list view must have an explicit `.order_by()` call — no implicit ordering for pagination.
-- **Coverage tiered:** services/selectors 90%, views 75%, project 80% floor. CI enforces 80% (`--cov-fail-under=80`). Layer floors are manual audit at phase end.
-- **Rounding standard:** `ROUND_HALF_EVEN` everywhere. `common/money.py:q()` is the single entry point. PRs without it are rejected.
-- **Backup:** Postgres volume is the single failure point. `pg_dump` cron + off-site copy + restore drill mandatory. Phase 4.5 deliverable complete.
+| Doc | İçerik |
+|---|---|
+| `docs/ARCHITECTURE_RULES.md` | Binding rules: layers, precision, N+1, atomicity, soft delete |
+| `docs/decisions.md` | ADR: mimari kararlar ve gerekçeleri |
+| `docs/lessons.md` | Öğrenilen dersler + bilinçli trade-off'lar |
+| `docs/runbooks/restore-from-backup.md` | DB restore procedure |
