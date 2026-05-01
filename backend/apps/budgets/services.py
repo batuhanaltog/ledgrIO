@@ -86,6 +86,8 @@ def check_and_send_budget_alerts(*, budget: Budget) -> bool:
     if usage_pct is None or usage_pct < budget.alert_threshold:
         return False
 
+    # DB flag written first to prevent double-send. Trade-off: a crash
+    # after the commit but before send_mail means one missed alert (never a duplicate).
     with db_transaction.atomic():
         Budget.objects.filter(pk=budget.pk).update(alert_sent_at=timezone.now())
 
@@ -93,7 +95,7 @@ def check_and_send_budget_alerts(*, budget: Budget) -> bool:
         subject=f"[Ledgr] Budget Alert: {budget.name}",
         message=(
             f"Your budget '{budget.name}' has reached "
-            f"{float(usage_pct) * 100:.1f}% of its limit.\n\n"
+            f"{usage_pct * 100:.1f}% of its limit.\n\n"
             f"Spent: {getattr(budget, 'spent', '?')} / {budget.amount} "
             f"{budget.user.default_currency_code}"
         ),
