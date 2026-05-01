@@ -4,8 +4,10 @@ from __future__ import annotations
 from typing import Any
 
 from django.core.cache import cache
-from django.db import connection
+from django.db import DatabaseError, connection
+from django.db.utils import OperationalError
 from drf_spectacular.utils import extend_schema
+from redis.exceptions import RedisError
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
@@ -32,7 +34,7 @@ class HealthView(APIView):
                 cur.execute("SELECT 1")
                 cur.fetchone()
             checks["database"] = "ok"
-        except Exception as exc:
+        except (OperationalError, DatabaseError) as exc:
             checks["database"] = f"error: {exc.__class__.__name__}"
             ok = False
 
@@ -40,7 +42,7 @@ class HealthView(APIView):
             cache.set("health:ping", "pong", timeout=5)
             checks["redis"] = "ok" if cache.get("health:ping") == "pong" else "error"
             ok = ok and checks["redis"] == "ok"
-        except Exception as exc:
+        except (RedisError, ConnectionError, TimeoutError) as exc:
             checks["redis"] = f"error: {exc.__class__.__name__}"
             ok = False
 

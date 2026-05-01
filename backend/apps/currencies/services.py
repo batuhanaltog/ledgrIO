@@ -23,7 +23,11 @@ def _cache_key(base: str, quote: str, at: date_type) -> str:
 
 
 def _lookup_rate(base: str, quote: str, at: date_type) -> Decimal | None:
-    """Return the most recent rate at or before `at`. Tries direct, then inverse."""
+    """Return the most recent raw rate at or before `at`. Tries direct, then inverse.
+
+    Returned value is unquantized so the caller can do `amount * rate` once and
+    quantize the final product — avoids compounding rounding (audit finding 1.8).
+    """
     direct = (
         FxRate.objects.filter(base_code=base, quote_code=quote, rate_date__lte=at)
         .order_by("-rate_date")
@@ -40,13 +44,17 @@ def _lookup_rate(base: str, quote: str, at: date_type) -> Decimal | None:
         .first()
     )
     if inverse is not None:
-        return (Decimal("1") / Decimal(inverse)).quantize(QUANTIZE)
+        return Decimal("1") / Decimal(inverse)
 
     return None
 
 
 def convert(amount: Decimal, from_code: str, to_code: str, *, at: date_type) -> Decimal:
-    """Convert `amount` from `from_code` to `to_code` using the snapshot at `at`."""
+    """Convert `amount` from `from_code` to `to_code` using the snapshot at `at`.
+
+    Quantizes once, at the end. Multiplies amount by the raw rate to preserve
+    precision through inverse-rate paths.
+    """
     if from_code == to_code:
         return amount
 
@@ -59,6 +67,7 @@ def convert(amount: Decimal, from_code: str, to_code: str, *, at: date_type) -> 
     if rate is None:
         raise RateNotFoundError(f"No FX rate for {from_code}->{to_code} on or before {at}")
 
+    # Cache the raw rate so subsequent calls keep precision.
     cache.set(key, str(rate), CACHE_TTL_SECONDS)
     return (amount * rate).quantize(QUANTIZE)
 
