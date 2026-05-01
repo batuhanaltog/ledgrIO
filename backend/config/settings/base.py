@@ -19,7 +19,7 @@ env = environ.Env(
 
 # Required — no default. Container will fail to start if missing.
 SECRET_KEY: Final[str] = env("DJANGO_SECRET_KEY")
-DEBUG: Final[bool] = env("DJANGO_DEBUG")
+DEBUG: bool = env("DJANGO_DEBUG")  # not Final — env-specific overrides in dev/prod
 ALLOWED_HOSTS: list[str] = env("DJANGO_ALLOWED_HOSTS")
 
 # Applications

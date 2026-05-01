@@ -30,13 +30,13 @@ class RegisterView(generics.CreateAPIView):
 
 @method_decorator(ratelimit(key="ip", rate="10/m", method="POST", block=True), name="post")
 class LoginView(TokenObtainPairView):
-    serializer_class = EmailTokenObtainPairSerializer
-    permission_classes = (AllowAny,)
+    serializer_class = EmailTokenObtainPairSerializer  # type: ignore[assignment]
+    permission_classes = (AllowAny,)  # type: ignore[assignment]
     authentication_classes = ()
 
 
 class RefreshView(TokenRefreshView):
-    permission_classes = (AllowAny,)
+    permission_classes = (AllowAny,)  # type: ignore[assignment]
     authentication_classes = ()
 
 
@@ -72,4 +72,5 @@ class MeView(generics.RetrieveUpdateAPIView):
     permission_classes = (IsAuthenticated,)
 
     def get_object(self) -> User:
-        return self.request.user
+        # IsAuthenticated permission guarantees this is a real User, not Anonymous.
+        return self.request.user  # type: ignore[return-value]

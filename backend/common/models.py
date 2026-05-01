@@ -33,8 +33,9 @@ class SoftDeleteManager(models.Manager.from_queryset(SoftDeleteQuerySet)):  # ty
     model) which returns every row, deleted or not.
     """
 
-    def get_queryset(self) -> SoftDeleteQuerySet:  # type: ignore[override]
-        return super().get_queryset().filter(deleted_at__isnull=True)
+    def get_queryset(self) -> SoftDeleteQuerySet:
+        qs: SoftDeleteQuerySet = super().get_queryset().filter(deleted_at__isnull=True)
+        return qs
 
 
 class SoftDeleteModel(models.Model):

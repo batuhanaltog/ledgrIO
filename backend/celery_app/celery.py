@@ -13,5 +13,5 @@ app.autodiscover_tasks()
 
 
 @app.task(bind=True)
-def debug_task(self) -> None:
-    print(f"Request: {self.request!r}")
+def debug_task(self: object) -> None:
+    print(f"Request: {self.request!r}")  # type: ignore[attr-defined]

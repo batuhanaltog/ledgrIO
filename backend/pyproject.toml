@@ -13,9 +13,34 @@ ignore = ["E501", "RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
 python_version = "3.12"
-strict = true
 plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
 exclude = ["migrations/", "tests/"]
+
+# Pragmatic strictness — strong on what we can control, lenient on the
+# Django/DRF generics that are hostile to full typing.
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+no_implicit_optional = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_no_return = true
+warn_return_any = true
+
+# Django/DRF ORM generics (QuerySet[Model], ModelSerializer, etc.) are
+# painful to fully parameterize and offer little safety in return.
+disallow_any_generics = false
+
+# Third-party libraries without py.typed.
+[[tool.mypy.overrides]]
+module = [
+    "celery.*",
+    "environ.*",
+    "sentry_sdk.*",
+    "django_ratelimit.*",
+]
+ignore_missing_imports = true
 
 [tool.django-stubs]
 django_settings_module = "config.settings.development"

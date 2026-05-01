@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import URLPattern, URLResolver, include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
 
-api_v1_patterns = [
+api_v1_patterns: list[URLPattern | URLResolver] = [
     path("", include("common.urls")),
     path("", include("apps.users.urls")),
     path("", include("apps.currencies.urls")),
@@ -18,7 +18,7 @@ api_v1_patterns = [
     path("redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 ]
 
-urlpatterns = [
+urlpatterns: list[URLPattern | URLResolver] = [
     path("admin/", admin.site.urls),
     path("api/v1/", include(api_v1_patterns)),
 ]
