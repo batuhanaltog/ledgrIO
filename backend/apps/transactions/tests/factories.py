@@ -5,6 +5,7 @@ from decimal import Decimal
 
 import factory
 
+from apps.accounts.tests.factories import AccountFactory
 from apps.transactions.models import EXPENSE, Transaction
 from apps.users.tests.factories import UserFactory
 
@@ -14,6 +15,7 @@ class TransactionFactory(factory.django.DjangoModelFactory):
         model = Transaction
 
     user = factory.SubFactory(UserFactory)
+    account = factory.SubFactory(AccountFactory, user=factory.SelfAttribute("..user"))
     type = EXPENSE
     amount = Decimal("100.00000000")
     currency_code = "USD"

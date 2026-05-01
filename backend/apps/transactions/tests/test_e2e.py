@@ -56,6 +56,23 @@ def test_full_transaction_flow(db):
     access = resp.json()["access"]
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
 
+    # Create accounts (required by Phase 4.5)
+    resp = client.post(
+        "/api/v1/accounts/",
+        {"name": "Wallet USD", "account_type": "cash", "currency_code": "USD"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    account_usd_id = resp.json()["id"]
+
+    resp = client.post(
+        "/api/v1/accounts/",
+        {"name": "Wallet TRY", "account_type": "bank", "currency_code": "TRY"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    account_try_id = resp.json()["id"]
+
     # Create user subcategory under system category
     resp = client.post(
         "/api/v1/categories/",
@@ -72,6 +89,7 @@ def test_full_transaction_flow(db):
             "type": "expense",
             "amount": "10.00000000",
             "currency_code": "USD",
+            "account_id": account_usd_id,
             "category_id": restaurant_id,
             "date": str(today),
             "description": "lunch at restaurant",
@@ -92,6 +110,7 @@ def test_full_transaction_flow(db):
             "type": "income",
             "amount": "5000.00000000",
             "currency_code": "TRY",
+            "account_id": account_try_id,
             "date": str(today),
             "description": "salary",
         },

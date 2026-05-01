@@ -55,11 +55,20 @@ class TransactionListView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request: Request) -> Response:
+        from apps.accounts.models import Account
+        from common.exceptions import AccountNotFoundError
+
         user: AbstractBaseUser = request.user  # type: ignore[assignment]
         serializer = TransactionWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data.copy()
+        account_id: int = data.pop("account_id")
         try:
-            tx = services.create_transaction(user=user, **serializer.validated_data)
+            account = Account.objects.get(pk=account_id, user=user)
+        except Account.DoesNotExist:
+            raise NotFound(f"Account {account_id} not found.")
+        try:
+            tx = services.create_transaction(user=user, account=account, **data)
         except (CategoryNotFoundError, CategoryPermissionError) as exc:
             return Response(
                 {"error": {"type": "VALIDATION_ERROR", "detail": str(exc), "status": 400}},

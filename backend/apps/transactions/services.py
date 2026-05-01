@@ -48,6 +48,7 @@ def _compute_fx(
 def create_transaction(
     *,
     user: AbstractBaseUser,
+    account: Any,
     type: str,
     amount: Decimal,
     currency_code: str,
@@ -75,6 +76,7 @@ def create_transaction(
         Transaction,
         Transaction.objects.create(
             user=user,
+            account=account,
             type=type,
             amount=amount,
             currency_code=currency_code,

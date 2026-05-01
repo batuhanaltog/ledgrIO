@@ -12,9 +12,10 @@ from datetime import timedelta
 from django.core.mail import send_mail
 from django.utils import timezone
 
-from .models import EmailVerificationToken, User
+from .models import EmailVerificationToken, PasswordResetToken, User
 
 TOKEN_TTL = timedelta(hours=24)
+RESET_TOKEN_TTL = timedelta(hours=1)
 
 
 class TokenInvalidError(ValueError):
@@ -47,6 +48,58 @@ def send_verification_email(user: User) -> EmailVerificationToken:
         fail_silently=False,
     )
     return token
+
+
+def request_password_reset(email: str) -> None:
+    """Issue a password reset token. Always returns 200 — even for unknown emails."""
+    try:
+        user = User.objects.get(email=email.lower())
+    except User.DoesNotExist:
+        return
+    PasswordResetToken.objects.filter(user=user, used_at__isnull=True).update(
+        used_at=timezone.now()
+    )
+    token = PasswordResetToken.objects.create(
+        user=user,
+        expires_at=timezone.now() + RESET_TOKEN_TTL,
+    )
+    send_mail(
+        subject="Reset your Ledgr.io password",
+        message=(
+            f"Hi,\n\n"
+            f"Reset your password using this token:\n\n  {token.token}\n\n"
+            f"It expires in 1 hour. If you did not request this, ignore this email.\n"
+        ),
+        from_email="no-reply@ledgr.io",
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
+
+
+def confirm_password_reset(token_str: str, new_password: str) -> User:
+    """Consume a reset token and set a new password. Invalidates all refresh tokens."""
+    try:
+        token = PasswordResetToken.objects.select_related("user").get(token=token_str)
+    except PasswordResetToken.DoesNotExist as exc:
+        raise TokenInvalidError("Token not recognised.") from exc
+
+    if token.is_expired:
+        raise TokenInvalidError("Token has expired.")
+    if token.is_used:
+        raise TokenInvalidError("Token already used.")
+
+    token.used_at = timezone.now()
+    token.save(update_fields=["used_at", "updated_at"])
+
+    user = token.user
+    user.set_password(new_password)
+    user.save(update_fields=["password", "updated_at"])
+
+    from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+    for outstanding in OutstandingToken.objects.filter(user=user):
+        BlacklistedToken.objects.get_or_create(token=outstanding)
+
+    return user
 
 
 def verify_email(token_str: str) -> User:
