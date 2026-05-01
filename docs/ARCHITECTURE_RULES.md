@@ -227,7 +227,7 @@ See D-010 and D-011 for the model decisions behind this.
 
 ---
 
-## 15. Success Response Envelope
+## 14. Success Response Envelope
 
 Decided early to avoid frontend refactor pain:
 
@@ -240,7 +240,7 @@ The asymmetry between success-bare and error-wrapped is intentional — frontend
 
 ---
 
-## 16. Backup & Restore
+## 15. Backup & Restore
 
 **Postgres volume is the single point of failure for user data. Backup is mandatory infrastructure, not a feature.**
 
@@ -257,7 +257,7 @@ Schedule a quarterly restore drill once production data exists.
 
 ---
 
-## 17. Proactive Warning Triggers
+## 16. Proactive Warning Triggers
 
 The following patterns must be flagged immediately during development:
 
@@ -266,7 +266,7 @@ The following patterns must be flagged immediately during development:
 | `float` in any monetary calculation | Precision loss |
 | `Decimal.quantize()` without explicit `ROUND_HALF_EVEN` | Rounding bias |
 | `request.user` accessed outside the view layer | Scope leak |
-| `.objects.all()` without a user filter in a multi-tenant query path | Data leak |
+| `.objects.all()` without a user filter in a user-scoped query path | Data leak |
 | Two-row mutation without `@transaction.atomic` | Partial-write corruption |
 | `except Exception:` or bare `except:` | Swallowed errors |
 | `print()` in production code paths | Log pollution |

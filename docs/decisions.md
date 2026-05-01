@@ -87,6 +87,15 @@ Format: `D-NNN: Başlık (Tarih)` — durum: ✅ Aktif / ⚠️ Revize / 🗄️
 
 ---
 
+## D-010: Budget model date_from/date_to — period_type enum yok (2026-05-01)
+
+**Bağlam:** Phase 5 model tasarımı.  
+**Karar:** `date_from` + `date_to` explicit date fields. `period_type` enum (monthly/yearly) yok. Daha esnek, daha az magic.  
+**Sonuç:** Kullanıcı istediği tarih aralığını belirtir. UI "bu ay" shortcut'ı verebilir ama model bağımsız.  
+**Durum:** ✅ Aktif (Phase 5'te implement edilecek)
+
+---
+
 ## D-011: Budget currency — her zaman kullanıcının base currency'si (2026-05-01)
 
 **Bağlam:** Phase 5 model tasarımı. `Transaction.amount_base` tüm işlemleri base currency'ye çevirip saklar.  
@@ -103,14 +112,5 @@ Format: `D-NNN: Başlık (Tarih)` — durum: ✅ Aktif / ⚠️ Revize / 🗄️
   1. Kullanıcı `fx_rate_override` payload'ı ile manuel rate girer
   2. FX endpoint'i üzerinden önce o tarihin rate'ini seed eder
   3. Geçmiş entry'ler için stale guard devre dışı bırakılır (en riskli)  
-**Sonuç:** Phase 6 (frontend) öncesinde karar verilmeli — UI'da rate girişi alanı gerekiyor mu?  
-**Durum:** ⚠️ Açık karar — Phase 5 veya 6 başında çözülmeli
-
----
-
-## D-010: Budget model date_from/date_to — period_type enum yok (2026-05-01)
-
-**Bağlam:** Phase 5 model tasarımı.  
-**Karar:** `date_from` + `date_to` explicit date fields. `period_type` enum (monthly/yearly) yok. Daha esnek, daha az magic.  
-**Sonuç:** Kullanıcı istediği tarih aralığını belirtir. UI "bu ay" shortcut'ı verebilir ama model bağımsız.  
-**Durum:** ✅ Aktif (Phase 5'te implement edilecek)
+**Sonuç:** Phase 5 başlangıç plan onayında çözülmeli — aksi halde Phase 5 başlamaz. UI'da rate girişi alanı gerekip gerekmediği bu adımda belirlenir.  
+**Durum:** ⚠️ Açık karar — Phase 5 başlangıcında kapanacak
