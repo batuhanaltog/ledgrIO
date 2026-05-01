@@ -1,0 +1,17 @@
+[run]
+source = apps, celery_app, common
+omit =
+    */migrations/*
+    */admin.py
+    */tests/*
+    */factories.py
+    config/settings/*
+    manage.py
+
+[report]
+fail_under = 90
+show_missing = True
+skip_covered = False
+
+[html]
+directory = htmlcov
