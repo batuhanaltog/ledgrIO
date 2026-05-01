@@ -37,11 +37,15 @@ def _compute_fx(
     currency_code: str,
     base_currency: str,
     tx_date: date_type,
+    fx_rate_override: Decimal | None = None,
 ) -> tuple[Decimal, Decimal]:
     """Return (amount_base, fx_rate_snapshot). Short-circuits when currencies match."""
     if currency_code == base_currency:
         return amount, Decimal("1")
-    rate = get_exchange_rate(currency_code, base_currency, at=tx_date)
+    if fx_rate_override is not None:
+        rate = fx_rate_override.quantize(QUANTIZE)
+    else:
+        rate = get_exchange_rate(currency_code, base_currency, at=tx_date).quantize(QUANTIZE)
     return (amount * rate).quantize(QUANTIZE), rate
 
 
@@ -56,6 +60,7 @@ def create_transaction(
     date: date_type,
     description: str = "",
     reference: str = "",
+    fx_rate_override: Decimal | None = None,
 ) -> Transaction:
     if not Currency.objects.filter(code=currency_code).exists():
         raise UnknownCurrencyError(f"Unknown currency: {currency_code}")
@@ -70,6 +75,7 @@ def create_transaction(
         currency_code=currency_code,
         base_currency=base_currency,
         tx_date=date,
+        fx_rate_override=fx_rate_override,
     )
 
     return cast(
@@ -95,6 +101,7 @@ def update_transaction(
     *,
     transaction: Transaction,
     user: AbstractBaseUser,
+    fx_rate_override: Decimal | None = None,
     **fields: Any,
 ) -> Transaction:
     if transaction.user_id != user.pk:
@@ -116,6 +123,7 @@ def update_transaction(
             currency_code=transaction.currency_code,
             base_currency=base_currency,
             tx_date=transaction.date,
+            fx_rate_override=fx_rate_override,
         )
 
     transaction.save()

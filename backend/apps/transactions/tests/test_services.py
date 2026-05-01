@@ -230,3 +230,86 @@ def test_get_transaction_summary_totals(db):
     assert Decimal(summary["total_income"]) == Decimal("500.00000000")
     assert Decimal(summary["total_expense"]) == Decimal("200.00000000")
     assert Decimal(summary["net"]) == Decimal("300.00000000")
+
+
+@pytest.mark.django_db
+def test_create_transaction_fx_rate_override_skips_convert(db):
+    """When fx_rate_override is given, get_exchange_rate is not called."""
+    user = UserFactory()
+    user.default_currency_code = "TRY"
+    user.save()
+    CurrencyFactory(code="USD")
+    CurrencyFactory(code="TRY")
+    account = AccountFactory(user=user, currency_code="USD")
+
+    # No FxRate seeded — would fail with StaleFxRateError without override
+    tx = create_transaction(
+        user=user,
+        account=account,
+        type="expense",
+        amount=Decimal("10.00000000"),
+        currency_code="USD",
+        category_id=None,
+        date=date(2020, 1, 15),
+        description="Old rent",
+        reference="",
+        fx_rate_override=Decimal("7.50000000"),
+    )
+
+    assert tx.fx_rate_snapshot == Decimal("7.50000000")
+    assert tx.amount_base == Decimal("75.00000000")
+
+
+@pytest.mark.django_db
+def test_create_transaction_fx_rate_override_same_currency_ignored(db):
+    """When currency == base, override is irrelevant — snapshot stays 1."""
+    user = UserFactory()
+    user.default_currency_code = "USD"
+    user.save()
+    CurrencyFactory(code="USD")
+    account = AccountFactory(user=user, currency_code="USD")
+
+    tx = create_transaction(
+        user=user,
+        account=account,
+        type="expense",
+        amount=Decimal("50.00000000"),
+        currency_code="USD",
+        category_id=None,
+        date=date.today(),
+        fx_rate_override=Decimal("99.00000000"),
+    )
+
+    assert tx.fx_rate_snapshot == Decimal("1")
+    assert tx.amount_base == Decimal("50.00000000")
+
+
+@pytest.mark.django_db
+def test_update_transaction_fx_rate_override(db):
+    """update_transaction accepts fx_rate_override when amount changes."""
+    user = UserFactory()
+    user.default_currency_code = "TRY"
+    user.save()
+    CurrencyFactory(code="USD")
+    CurrencyFactory(code="TRY")
+    account = AccountFactory(user=user, currency_code="USD")
+    tx = TransactionFactory(
+        user=user,
+        account=account,
+        currency_code="USD",
+        base_currency="TRY",
+        amount=Decimal("10.00000000"),
+        amount_base=Decimal("330.00000000"),
+        fx_rate_snapshot=Decimal("33.00000000"),
+        date=date.today(),
+    )
+
+    updated = update_transaction(
+        transaction=tx,
+        user=user,
+        amount=Decimal("20.00000000"),
+        fx_rate_override=Decimal("35.00000000"),
+    )
+
+    assert updated.fx_rate_snapshot == Decimal("35.00000000")
+    assert updated.amount_base == Decimal("700.00000000")
