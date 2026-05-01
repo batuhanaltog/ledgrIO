@@ -10,6 +10,7 @@ from apps.budgets.models import Budget
 from apps.budgets.tests.factories import BudgetFactory
 from apps.users.tests.factories import UserFactory
 from apps.categories.tests.factories import CategoryFactory
+from common.exceptions import BudgetInvalidError
 
 
 @pytest.mark.django_db
@@ -243,3 +244,133 @@ def test_get_budget_for_user_raises_not_found_for_other_user():
 
     with pytest.raises(BudgetNotFoundError):
         get_budget_for_user(user=user, pk=budget.pk)
+
+
+# ---------------------------------------------------------------------------
+# Service tests — create_budget
+# ---------------------------------------------------------------------------
+
+from apps.budgets.services import create_budget, delete_budget, update_budget
+
+
+@pytest.mark.django_db
+def test_create_budget_happy_path():
+    user = UserFactory()
+
+    budget = create_budget(user=user, data={
+        "name": "Groceries",
+        "category": None,
+        "amount": Decimal("500.00000000"),
+        "date_from": date(2026, 5, 1),
+        "date_to": date(2026, 5, 31),
+        "alert_threshold": Decimal("0.80000000"),
+    })
+
+    assert budget.pk is not None
+    assert budget.name == "Groceries"
+    assert budget.user == user
+
+
+@pytest.mark.django_db
+def test_create_budget_date_to_before_date_from_raises():
+    user = UserFactory()
+
+    with pytest.raises(BudgetInvalidError, match="date_to"):
+        create_budget(user=user, data={
+            "name": "Bad dates",
+            "category": None,
+            "amount": Decimal("100.00000000"),
+            "date_from": date(2026, 5, 31),
+            "date_to": date(2026, 5, 1),
+        })
+
+
+@pytest.mark.django_db
+def test_create_budget_category_not_owned_raises():
+    user = UserFactory()
+    other = UserFactory()
+    cat = CategoryFactory(owner=other)
+
+    with pytest.raises(BudgetInvalidError, match="category"):
+        create_budget(user=user, data={
+            "name": "Bad category",
+            "category_id": cat.pk,
+            "amount": Decimal("100.00000000"),
+            "date_from": date(2026, 5, 1),
+            "date_to": date(2026, 5, 31),
+        })
+
+
+# ---------------------------------------------------------------------------
+# Service tests — update_budget
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+def test_update_budget_changes_name():
+    user = UserFactory()
+    budget = BudgetFactory(user=user, name="Old")
+
+    updated = update_budget(budget=budget, data={"name": "New"})
+
+    assert updated.name == "New"
+
+
+@pytest.mark.django_db
+def test_update_budget_resets_alert_sent_at_when_amount_changes():
+    from django.utils import timezone
+
+    user = UserFactory()
+    budget = BudgetFactory(
+        user=user,
+        amount=Decimal("500.00000000"),
+        alert_threshold=Decimal("0.80000000"),
+        alert_sent_at=timezone.now(),
+    )
+
+    updated = update_budget(budget=budget, data={"amount": Decimal("1000.00000000")})
+
+    assert updated.alert_sent_at is None
+
+
+@pytest.mark.django_db
+def test_update_budget_resets_alert_sent_at_when_threshold_changes():
+    from django.utils import timezone
+
+    user = UserFactory()
+    budget = BudgetFactory(
+        user=user,
+        alert_threshold=Decimal("0.80000000"),
+        alert_sent_at=timezone.now(),
+    )
+
+    updated = update_budget(budget=budget, data={"alert_threshold": Decimal("0.90000000")})
+
+    assert updated.alert_sent_at is None
+
+
+@pytest.mark.django_db
+def test_update_budget_does_not_reset_alert_sent_at_when_name_only_changes():
+    from django.utils import timezone
+
+    user = UserFactory()
+    sent_at = timezone.now()
+    budget = BudgetFactory(user=user, alert_threshold=Decimal("0.80000000"), alert_sent_at=sent_at)
+
+    updated = update_budget(budget=budget, data={"name": "Renamed"})
+
+    assert updated.alert_sent_at == sent_at
+
+
+# ---------------------------------------------------------------------------
+# Service tests — delete_budget
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+def test_delete_budget_removes_record():
+    user = UserFactory()
+    budget = BudgetFactory(user=user)
+    pk = budget.pk
+
+    delete_budget(budget=budget)
+
+    assert not Budget.objects.filter(pk=pk).exists()
