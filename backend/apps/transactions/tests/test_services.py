@@ -5,6 +5,7 @@ from decimal import Decimal
 
 import pytest
 
+from apps.accounts.tests.factories import AccountFactory
 from apps.categories.tests.factories import SystemCategoryFactory
 from apps.currencies.tests.factories import CurrencyFactory, FxRateFactory
 from apps.transactions.models import Transaction
@@ -39,8 +40,10 @@ def test_create_transaction_same_currency(db):
     user.save()
     CurrencyFactory(code="USD")
 
+    account = AccountFactory(user=user, currency_code="USD")
     tx = create_transaction(
         user=user,
+        account=account,
         type="expense",
         amount=Decimal("50.00"),
         currency_code="USD",
@@ -66,8 +69,10 @@ def test_create_transaction_foreign_currency_snapshots_rate(db):
     CurrencyFactory(code="TRY")
     FxRateFactory(base_code="USD", quote_code="TRY", rate=Decimal("33.00000000"), rate_date=date.today())
 
+    account = AccountFactory(user=user, currency_code="USD")
     tx = create_transaction(
         user=user,
+        account=account,
         type="expense",
         amount=Decimal("10.00000000"),
         currency_code="USD",
@@ -89,8 +94,10 @@ def test_create_transaction_with_category(db):
     CurrencyFactory(code="USD")
     system_cat = SystemCategoryFactory()
 
+    account = AccountFactory(user=user, currency_code="USD")
     tx = create_transaction(
         user=user,
+        account=account,
         type="expense",
         amount=Decimal("20.00"),
         currency_code="USD",

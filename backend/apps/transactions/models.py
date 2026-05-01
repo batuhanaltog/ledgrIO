@@ -8,6 +8,7 @@ from django.db import models
 from apps.categories.models import Category
 from common.models import SoftDeleteModel, TimestampedModel
 
+
 User = get_user_model()
 
 INCOME = "income"
@@ -20,6 +21,11 @@ TRANSACTION_TYPE_CHOICES = [
 
 class Transaction(TimestampedModel, SoftDeleteModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="transactions")
+    account = models.ForeignKey(
+        "accounts.Account",
+        on_delete=models.PROTECT,
+        related_name="transactions",
+    )
     type = models.CharField(max_length=10, choices=TRANSACTION_TYPE_CHOICES)
     amount = models.DecimalField(max_digits=20, decimal_places=8)
     currency_code = models.CharField(max_length=10)

@@ -15,6 +15,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         model = Transaction
         fields: ClassVar = [
             "id",
+            "account_id",
             "type",
             "amount",
             "currency_code",
@@ -46,6 +47,7 @@ class TransactionWriteSerializer(serializers.Serializer):
     type = serializers.ChoiceField(choices=[INCOME, EXPENSE])
     amount = serializers.DecimalField(max_digits=20, decimal_places=8, min_value=Decimal("0.00000001"))
     currency_code = serializers.CharField(max_length=10)
+    account_id = serializers.IntegerField()
     category_id = serializers.IntegerField(allow_null=True, required=False, default=None)
     date = serializers.DateField()
     description = serializers.CharField(allow_blank=True, required=False, default="")

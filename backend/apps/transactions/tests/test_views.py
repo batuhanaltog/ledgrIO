@@ -7,6 +7,7 @@ import pytest
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.accounts.tests.factories import AccountFactory
 from apps.currencies.tests.factories import CurrencyFactory
 from apps.transactions.models import Transaction
 from apps.transactions.tests.factories import TransactionFactory
@@ -37,9 +38,10 @@ def usd_currency(db):
 
 @pytest.mark.django_db
 def test_create_transaction(auth_client):
+    account = AccountFactory(user=auth_client.user, currency_code="USD")
     resp = auth_client.post(
         "/api/v1/transactions/",
-        {"type": "expense", "amount": "50.00", "currency_code": "USD", "date": str(date.today()), "description": "Test"},
+        {"type": "expense", "amount": "50.00", "currency_code": "USD", "account_id": account.id, "date": str(date.today()), "description": "Test"},
         format="json",
     )
     assert resp.status_code == 201
