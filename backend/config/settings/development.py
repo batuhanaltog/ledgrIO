@@ -12,7 +12,8 @@ INTERNAL_IPS = ["127.0.0.1"]
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-DATABASES["default"]["HOST"] = "localhost"
+# DB_HOST defaults to "db" (Docker service name) in base.py.
+# Override with DB_HOST=localhost in .env when running outside Docker.
 
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_EAGER_PROPAGATES = True
