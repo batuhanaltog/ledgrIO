@@ -19,6 +19,7 @@ from .serializers import (
     RegisterSerializer,
     UserSerializer,
 )
+from .verification import TokenInvalidError, verify_email
 
 
 @method_decorator(ratelimit(key="ip", rate="5/h", method="POST", block=True), name="post")
@@ -74,3 +75,29 @@ class MeView(generics.RetrieveUpdateAPIView):
     def get_object(self) -> User:
         # IsAuthenticated permission guarantees this is a real User, not Anonymous.
         return self.request.user  # type: ignore[return-value]
+
+
+class VerifyEmailView(APIView):
+    """Consume a verification token and flip is_email_verified."""
+
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+
+    @extend_schema(
+        request={"application/json": {"type": "object", "properties": {"token": {"type": "string"}}}},
+        responses={200: None, 400: None},
+    )
+    def post(self, request: Request) -> Response:
+        token_str = request.data.get("token")
+        if not token_str:
+            return Response(
+                {"detail": "token required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            user = verify_email(token_str)
+        except TokenInvalidError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"email": user.email, "is_email_verified": user.is_email_verified},
+            status=status.HTTP_200_OK,
+        )

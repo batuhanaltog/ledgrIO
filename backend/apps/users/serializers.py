@@ -22,8 +22,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email", "default_currency_code", "profile", "date_joined")
-        read_only_fields = ("id", "email", "date_joined")
+        fields = (
+            "id",
+            "email",
+            "default_currency_code",
+            "is_email_verified",
+            "profile",
+            "date_joined",
+        )
+        read_only_fields = ("id", "email", "is_email_verified", "date_joined")
 
     date_joined = serializers.DateTimeField(source="created_at", read_only=True)
 

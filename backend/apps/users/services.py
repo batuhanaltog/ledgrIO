@@ -36,13 +36,20 @@ def register_user(
 
     try:
         with transaction.atomic():
-            return User.objects.create_user(
+            user = User.objects.create_user(
                 email=email,
                 password=password,
                 default_currency_code=default_currency_code,
             )
     except IntegrityError as exc:
         raise ValidationError({"email": ["A user with this email already exists."]}) from exc
+
+    # Fire the verification email after the user-create transaction commits;
+    # mail failure must not roll back the registration.
+    from .verification import send_verification_email
+
+    send_verification_email(user)
+    return user
 
 
 def update_user(
