@@ -22,6 +22,13 @@ frontend/
 nginx/ docker-compose.yml docker-compose.override.yml
 ```
 
+## Fazlar
+- [x] **Faz 1 — Foundation:** Docker, Django scaffold, tüm modeller + migration'lar, CRUD API'lar, factory_boy testleri
+- [ ] **Faz 2 — İş Mantığı:** Window Function / CTE testleri, django-filter, budget alert logic, Celery tasks, CSV/PDF generator, dashboard endpoint, test coverage %90+
+- [ ] **Faz 3 — Frontend:** TanStack Router/Query/Table, shadcn/ui tema, auth + dashboard + portfolio + transaction + budget + reports sayfaları, Recharts, RHF + Zod
+- [ ] **Faz 4 — Polish + Export:** CSV/PDF E2E, notification bell, Nginx prod config, rate limiting, multi-stage Docker build
+- [ ] **Faz 5 — Observability + CI/CD:** django-prometheus, Grafana + Prometheus, Jenkins pipeline, structured JSON logging
+
 ## Mevcut Durum (Faz 1 tamamlandı)
 - Tüm modeller, migration'lar, CRUD API'lar yazıldı
 - `docker-compose up --build` çalışıyor, tüm servisler UP
