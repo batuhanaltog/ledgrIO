@@ -18,6 +18,7 @@ api_v1_patterns: list[URLPattern | URLResolver] = [
     path("", include("apps.accounts.urls")),
     path("debts/", include("apps.debts.urls")),
     path("recurring/", include("apps.recurring.urls")),
+    path("budgets/", include("apps.budgets.urls")),
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
