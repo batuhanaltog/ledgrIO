@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from django.db import IntegrityError
@@ -374,3 +375,96 @@ def test_delete_budget_removes_record():
     delete_budget(budget=budget)
 
     assert not Budget.objects.filter(pk=pk).exists()
+
+
+# ---------------------------------------------------------------------------
+# Alert service tests
+# ---------------------------------------------------------------------------
+
+from apps.budgets.services import check_and_send_budget_alerts
+
+
+@pytest.mark.django_db
+def test_alert_not_sent_when_threshold_is_none():
+    user = UserFactory()
+    budget = BudgetFactory(user=user, alert_threshold=None)
+    budget.usage_pct = Decimal("0.90000000")
+
+    result = check_and_send_budget_alerts(budget=budget)
+
+    assert result is False
+
+
+@pytest.mark.django_db
+def test_alert_not_sent_when_already_sent():
+    from django.utils import timezone
+
+    user = UserFactory()
+    budget = BudgetFactory(
+        user=user,
+        alert_threshold=Decimal("0.80000000"),
+        alert_sent_at=timezone.now(),
+    )
+    budget.usage_pct = Decimal("0.95000000")
+
+    result = check_and_send_budget_alerts(budget=budget)
+
+    assert result is False
+
+
+@pytest.mark.django_db
+def test_alert_not_sent_when_below_threshold():
+    user = UserFactory()
+    budget = BudgetFactory(user=user, alert_threshold=Decimal("0.80000000"))
+    budget.usage_pct = Decimal("0.70000000")
+
+    result = check_and_send_budget_alerts(budget=budget)
+
+    assert result is False
+
+
+@pytest.mark.django_db
+def test_alert_sent_when_at_threshold_boundary():
+    user = UserFactory()
+    user.email = "test@ledgr.io"
+    user.save()
+    budget = BudgetFactory(
+        user=user,
+        alert_threshold=Decimal("0.80000000"),
+        alert_sent_at=None,
+    )
+    budget.usage_pct = Decimal("0.80000000")
+    budget.spent = Decimal("400.00000000")
+
+    with patch("apps.budgets.services.send_mail") as mock_mail:
+        result = check_and_send_budget_alerts(budget=budget)
+
+    assert result is True
+    mock_mail.assert_called_once()
+    refreshed = Budget.objects.get(pk=budget.pk)
+    assert refreshed.alert_sent_at is not None
+
+
+@pytest.mark.django_db
+def test_alert_idempotent_second_call_skipped():
+    user = UserFactory()
+    budget = BudgetFactory(
+        user=user,
+        alert_threshold=Decimal("0.80000000"),
+        alert_sent_at=None,
+    )
+    budget.usage_pct = Decimal("0.90000000")
+    budget.spent = Decimal("450.00000000")
+
+    with patch("apps.budgets.services.send_mail"):
+        check_and_send_budget_alerts(budget=budget)
+
+    # Reload from DB — alert_sent_at is now set
+    budget_reloaded = Budget.objects.get(pk=budget.pk)
+    budget_reloaded.usage_pct = Decimal("0.90000000")
+
+    with patch("apps.budgets.services.send_mail") as mock_mail_2:
+        result = check_and_send_budget_alerts(budget=budget_reloaded)
+
+    assert result is False
+    mock_mail_2.assert_not_called()
