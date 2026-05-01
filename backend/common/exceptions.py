@@ -31,6 +31,46 @@ class TransactionNotFoundError(LookupError):
     """Requested transaction does not exist or belongs to another user."""
 
 
+class AccountNotFoundError(LookupError):
+    """Requested account does not exist or belongs to another user."""
+
+
+class AccountInUseError(Exception):
+    """Account cannot be deleted because it has linked transactions."""
+
+
+class AccountCurrencyLockedError(Exception):
+    """Account currency cannot be changed once transactions exist."""
+
+
+class DebtNotFoundError(LookupError):
+    """Requested debt does not exist or belongs to another user."""
+
+
+class DebtBalanceUnderflowError(ValueError):
+    """Payment amount exceeds current debt balance."""
+
+
+class DebtCategoryNotFoundError(LookupError):
+    """Requested debt category does not exist or belongs to another user."""
+
+
+class DebtCategoryHasChildrenError(Exception):
+    """Debt category cannot be deleted because it has child categories."""
+
+
+class DebtCategoryCycleError(ValueError):
+    """Setting this parent would create a cycle in the debt category tree."""
+
+
+class RecurringTemplateNotFoundError(LookupError):
+    """Requested recurring template does not exist or belongs to another user."""
+
+
+class RecurringTemplateInvalidError(ValueError):
+    """Recurring template configuration is invalid (e.g. currency mismatch with account)."""
+
+
 # Map DRF status codes to a stable, framework-agnostic taxonomy clients can branch on.
 # Adding a new error type? Add it here, not by leaking exc.__class__.__name__.
 _TYPE_BY_STATUS: Final[dict[int, str]] = {
