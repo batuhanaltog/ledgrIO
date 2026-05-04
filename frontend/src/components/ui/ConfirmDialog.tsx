@@ -20,7 +20,8 @@ export function ConfirmDialog({
       <div className="flex justify-end gap-3">
         <Button variant="outline" onClick={onClose} disabled={loading}>İptal</Button>
         <Button variant="danger" onClick={onConfirm} disabled={loading}>
-          {loading ? <Spinner /> : null} Sil
+          {loading && <Spinner />}
+          Sil
         </Button>
       </div>
     </Modal>

@@ -10,7 +10,7 @@ export function useEditModal<T>() {
   return { selected, open: (item: T) => setSelected(item), close: () => setSelected(null) };
 }
 
-export function useDeleteConfirm() {
-  const [pendingId, setPendingId] = useState<number | null>(null);
-  return { pendingId, confirm: (id: number) => setPendingId(id), cancel: () => setPendingId(null) };
+export function useDeleteConfirm<T = number>() {
+  const [pendingId, setPendingId] = useState<T | null>(null);
+  return { pendingId, confirm: (id: T) => setPendingId(id), cancel: () => setPendingId(null) };
 }
