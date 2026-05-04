@@ -44,9 +44,25 @@ export interface PaginatedTransactions {
   count: number;
 }
 
+export interface TransactionInput {
+  account_id: number;
+  type: "income" | "expense";
+  amount: string;
+  currency_code: string;
+  category_id?: number | null;
+  date: string;
+  description?: string;
+  reference?: string;
+}
+
 export const transactionsApi = {
   list: (params?: Record<string, string | number>) =>
     api.get<PaginatedTransactions>("/transactions/", { params }).then((r) => r.data),
   summary: (params?: Record<string, string>) =>
     api.get<TransactionSummary>("/transactions/summary/", { params }).then((r) => r.data),
+  create: (data: TransactionInput) =>
+    api.post<Transaction>("/transactions/", data).then((r) => r.data),
+  update: (id: number, data: Partial<TransactionInput>) =>
+    api.patch<Transaction>(`/transactions/${id}/`, data).then((r) => r.data),
+  delete: (id: number) => api.delete(`/transactions/${id}/`),
 };
