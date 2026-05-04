@@ -8,7 +8,15 @@ from rest_framework import serializers
 from apps.budgets.models import Budget
 
 
+class _CategoryInlineSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    color = serializers.CharField()
+    icon = serializers.CharField()
+
+
 class BudgetSerializer(serializers.ModelSerializer):
+    category = _CategoryInlineSerializer(read_only=True)
     spent = serializers.DecimalField(
         max_digits=20, decimal_places=8, read_only=True, default=Decimal("0")
     )
