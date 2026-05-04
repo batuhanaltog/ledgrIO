@@ -8,6 +8,12 @@ import { VerifyEmailPage } from "./features/auth/pages/VerifyEmailPage";
 import { PasswordResetRequestPage } from "./features/auth/pages/PasswordResetRequestPage";
 import { PasswordResetConfirmPage } from "./features/auth/pages/PasswordResetConfirmPage";
 import { DashboardPage } from "./features/dashboard/pages/DashboardPage";
+import { AccountsPage } from "./features/accounts/pages/AccountsPage";
+import { TransactionsPage } from "./features/transactions/pages/TransactionsPage";
+import { CategoriesPage } from "./features/categories/pages/CategoriesPage";
+import { BudgetsPage } from "./features/budgets/pages/BudgetsPage";
+import { RecurringPage } from "./features/recurring/pages/RecurringPage";
+import { DebtsPage } from "./features/debts/pages/DebtsPage";
 
 export const router = createBrowserRouter([
   {
@@ -19,7 +25,6 @@ export const router = createBrowserRouter([
       { path: "/password-reset/confirm", element: <PasswordResetConfirmPage /> },
     ],
   },
-  // verify-email is reachable whether logged in or not.
   { path: "/verify-email", element: <VerifyEmailPage /> },
   {
     element: <ProtectedRoute />,
@@ -29,6 +34,12 @@ export const router = createBrowserRouter([
         children: [
           { path: "/", element: <Navigate to="/dashboard" replace /> },
           { path: "/dashboard", element: <DashboardPage /> },
+          { path: "/accounts", element: <AccountsPage /> },
+          { path: "/transactions", element: <TransactionsPage /> },
+          { path: "/categories", element: <CategoriesPage /> },
+          { path: "/budgets", element: <BudgetsPage /> },
+          { path: "/recurring", element: <RecurringPage /> },
+          { path: "/debts", element: <DebtsPage /> },
         ],
       },
     ],
