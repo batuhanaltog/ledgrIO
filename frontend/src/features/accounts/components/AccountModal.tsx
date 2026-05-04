@@ -39,7 +39,7 @@ export function AccountModal({ account, onClose }: AccountModalProps) {
 
   useEffect(() => {
     reset(isEdit
-      ? { name: account.name, account_type: account.account_type as FormInput["account_type"], currency_code: account.currency_code, opening_balance: account.opening_balance, notes: account.notes }
+      ? { name: account.name, account_type: account.account_type as FormInput["account_type"], currency_code: account.currency_code, opening_balance: account.opening_balance, notes: account.notes ?? "" }
       : { name: "", account_type: "bank", currency_code: "USD", opening_balance: "0", notes: "" }
     );
   }, [account, isEdit, reset]);

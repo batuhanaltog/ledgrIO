@@ -9,7 +9,7 @@ export interface Account {
   current_balance: string;
   transaction_count: number;
   is_active: boolean;
-  notes: string;
+  notes: string | null;
 }
 
 export interface AccountsSummary {

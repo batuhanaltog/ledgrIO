@@ -22,7 +22,7 @@ export function AccountsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (isPending) return <div className="flex justify-center py-20"><Spinner /></div>;
-  if (isError) return <Alert tone="danger">Hesaplar yüklenemedi.</Alert>;
+  if (isError || !data) return <Alert tone="danger">Hesaplar yüklenemedi.</Alert>;
 
   const handleDelete = async () => {
     if (deleteConfirm.pendingId === null) return;
@@ -61,7 +61,7 @@ export function AccountsPage() {
               {data.results.map((acc) => (
                 <tr key={acc.id} className="hover:bg-surface-2/50">
                   <td className="px-4 py-3 font-medium text-ink">{acc.name}</td>
-                  <td className="px-4 py-3 text-ink-muted capitalize">{acc.account_type.replace("_", " ")}</td>
+                  <td className="px-4 py-3 text-ink-muted capitalize">{acc.account_type.replaceAll("_", " ")}</td>
                   <td className="px-4 py-3 text-ink-muted">{acc.currency_code}</td>
                   <td className="px-4 py-3 text-right num font-medium text-ink">{fmt(acc.current_balance)}</td>
                   <td className="px-4 py-3 text-right text-ink-muted">{acc.transaction_count}</td>
