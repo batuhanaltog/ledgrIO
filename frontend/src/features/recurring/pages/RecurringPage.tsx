@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
@@ -23,6 +23,7 @@ export function RecurringPage() {
   const deleteConfirm = useDeleteConfirm();
   const deleteRecurring = useDeleteRecurring();
   const updateRecurring = useUpdateRecurring();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (isPending) return <div className="flex justify-center py-20"><Spinner /></div>;
   if (isError || !data) return <Alert tone="danger">Could not load recurring templates.</Alert>;
@@ -87,9 +88,19 @@ export function RecurringPage() {
       {editModal.selected && <RecurringModal template={editModal.selected} onClose={editModal.close} />}
       <ConfirmDialog
         open={deleteConfirm.pendingId !== null}
-        onClose={deleteConfirm.cancel}
-        onConfirm={async () => { if (deleteConfirm.pendingId !== null) { await deleteRecurring.mutateAsync(deleteConfirm.pendingId); deleteConfirm.cancel(); } }}
+        onClose={() => { setDeleteError(null); deleteConfirm.cancel(); }}
+        onConfirm={async () => {
+          if (deleteConfirm.pendingId !== null) {
+            try {
+              await deleteRecurring.mutateAsync(deleteConfirm.pendingId);
+              deleteConfirm.cancel();
+            } catch {
+              setDeleteError("Could not delete template. Please try again.");
+            }
+          }
+        }}
         loading={deleteRecurring.isPending}
+        error={deleteError}
       />
     </div>
   );

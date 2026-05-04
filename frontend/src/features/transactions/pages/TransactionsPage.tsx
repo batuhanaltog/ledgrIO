@@ -36,6 +36,7 @@ export function TransactionsPage() {
   const editModal = useEditModal<Transaction>();
   const deleteConfirm = useDeleteConfirm();
   const deleteTransaction = useDeleteTransaction();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleFilterChange = useCallback((f: FilterValues) => {
     const p: Record<string, string> = {};
@@ -165,14 +166,19 @@ export function TransactionsPage() {
       )}
       <ConfirmDialog
         open={deleteConfirm.pendingId !== null}
-        onClose={deleteConfirm.cancel}
+        onClose={() => { setDeleteError(null); deleteConfirm.cancel(); }}
         onConfirm={async () => {
           if (deleteConfirm.pendingId !== null) {
-            await deleteTransaction.mutateAsync(deleteConfirm.pendingId);
-            deleteConfirm.cancel();
+            try {
+              await deleteTransaction.mutateAsync(deleteConfirm.pendingId);
+              deleteConfirm.cancel();
+            } catch {
+              setDeleteError("Could not delete transaction. Please try again.");
+            }
           }
         }}
         loading={deleteTransaction.isPending}
+        error={deleteError}
       />
     </div>
   );

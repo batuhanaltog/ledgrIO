@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
@@ -18,6 +19,7 @@ export function CategoriesPage() {
   const editModal = useEditModal<Category>();
   const deleteConfirm = useDeleteConfirm();
   const deleteCategory = useDeleteCategory();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (isPending)
     return (
@@ -113,14 +115,19 @@ export function CategoriesPage() {
       )}
       <ConfirmDialog
         open={deleteConfirm.pendingId !== null}
-        onClose={deleteConfirm.cancel}
+        onClose={() => { setDeleteError(null); deleteConfirm.cancel(); }}
         onConfirm={async () => {
           if (deleteConfirm.pendingId !== null) {
-            await deleteCategory.mutateAsync(deleteConfirm.pendingId);
-            deleteConfirm.cancel();
+            try {
+              await deleteCategory.mutateAsync(deleteConfirm.pendingId);
+              deleteConfirm.cancel();
+            } catch {
+              setDeleteError("Could not delete category. Please try again.");
+            }
           }
         }}
         loading={deleteCategory.isPending}
+        error={deleteError}
       />
     </div>
   );
