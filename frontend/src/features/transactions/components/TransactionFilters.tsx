@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useAccounts } from "@/features/accounts/hooks";
 import { useCategories } from "@/features/categories/hooks";
+import { todayMonthRange } from "../utils";
 
 export interface FilterValues {
   date_from: string;
@@ -11,14 +12,6 @@ export interface FilterValues {
   category_id: string;
   type: string;
   description: string;
-}
-
-function todayMonthRange() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const last = new Date(y, now.getMonth() + 1, 0).getDate();
-  return { date_from: `${y}-${m}-01`, date_to: `${y}-${m}-${last}` };
 }
 
 interface Props {

@@ -11,20 +11,13 @@ import {
 } from "@/hooks/useModalState";
 import { useAccounts } from "@/features/accounts/hooks";
 import { useTransactions, useDeleteTransaction } from "../hooks";
+import { todayMonthRange } from "../utils";
 import {
   TransactionFilters,
   type FilterValues,
 } from "../components/TransactionFilters";
 import { TransactionModal } from "../components/TransactionModal";
 import type { Transaction } from "../api";
-
-function todayMonthRange() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const last = new Date(y, now.getMonth() + 1, 0).getDate();
-  return { date_from: `${y}-${m}-01`, date_to: `${y}-${m}-${last}` };
-}
 
 export function TransactionsPage() {
   const { date_from, date_to } = todayMonthRange();

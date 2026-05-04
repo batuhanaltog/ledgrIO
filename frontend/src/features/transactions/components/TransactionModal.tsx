@@ -69,7 +69,7 @@ export function TransactionModal({ transaction, onClose }: TransactionModalProps
         ? {
             account_id: String(transaction.account_id),
             type: transaction.type,
-            amount: String(Number(transaction.amount)),
+            amount: transaction.amount.replace(/\.?0+$/, ""),
             currency_code: transaction.currency_code,
             category_id: transaction.category
               ? String(transaction.category.id)
