@@ -105,6 +105,33 @@ Format: `D-NNN: Başlık (Tarih)` — durum: ✅ Aktif / ⚠️ Revize / 🗄️
 
 ---
 
+## D-013: Budget alert email ordering — DB write before send_mail (2026-05-01)
+
+**Bağlam:** Phase 5 alert service tasarımı. `check_and_send_budget_alerts` hem DB'yi güncelleyip hem email atıyor. Hata anında hangisi önce gelirse yanlış davranış tetiklenebilir.  
+**Karar:** `alert_sent_at` alanı `@transaction.atomic` içinde email'den ÖNCE yazılır. `send_mail(fail_silently=True)` transaction dışında çağrılır.  
+**Sonuç:** Crash senaryoları: (a) DB yazma başarılı, email çöküyor → kullanıcı ertesi beat'te uyarı almaz (kabul edilebilir, missed alert). (b) DB yazılmadan crash → ertesi beat yeniden dener, çift email riski → bu senaryoyu `alert_sent_at` guard'ı önler. Missed alert, double-send'den tercih edilir.  
+**Durum:** ✅ Aktif
+
+---
+
+## D-014: Brand palette source-of-truth — `tokens.css` CSS vars (2026-05-04)
+
+**Bağlam:** Phase 6 frontend kurulumu. Brand renkleri (logo'dan türetilmiş navy + cyan) Tailwind config'inde mi yoksa CSS variable layer'da mı tutulsun?
+**Karar:** `frontend/src/styles/globals.css` içinde `:root` CSS değişkenleri (örn. `--brand-navy: 15 37 71`) tek doğru kaynak. `tailwind.config.js` `colors.brand.navy` ile bu değişkenleri `rgb(var(--brand-navy) / <alpha-value>)` formatında okur. Komponentler her zaman Tailwind class'lar (`bg-brand-navy`) kullanır, asla hex literal değil.
+**Sonuç:** Tema değişimi (gelecekteki dark mode, çoklu marka temaları) tek dosyadan yönetilebilir. shadcn/ui benzeri kütüphane lock-in yok — primitive'ler `frontend/src/components/ui/` altında, brand tokenlerine bound.
+**Durum:** ✅ Aktif
+
+---
+
+## D-015: Axios refresh-queue ile JWT yenileme (2026-05-04)
+
+**Bağlam:** Phase 6 auth flow. Access token TTL 15dk; süre dolunca eşzamanlı request'lerden hangisi refresh tetikleyecek? Çoklu refresh çağrısı race condition + JWT blacklist sürtüşmesi yaratır.
+**Karar:** `frontend/src/lib/api.ts` response interceptor'ında module-scoped `refreshing: Promise | null` queue. İlk 401, refresh promise'i başlatır; eşzamanlı 401'ler aynı promise'i await eder; `_retried` flag çift retry'ı önler. Refresh fail → store `clear()` + 401 bubble → `ProtectedRoute` `/login`'e yönlendirir.
+**Sonuç:** Stateless JWT'nin değeri korunuyor (D-002 ile uyumlu). Logout sonrası backend access token revoke etmediği için frontend store'u anında temizler.
+**Durum:** ✅ Aktif
+
+---
+
 ## D-012: Geçmiş tarihli transaction FX girişi (2026-05-01)
 
 **Bağlam:** Kullanıcı 2+ yıl öncesine ait kira/fatura girmek isteyebilir. O tarihe ait FxRate olmayabilir.  
