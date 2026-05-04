@@ -55,7 +55,9 @@ export function BudgetsPage() {
                     </div>
                     <div className="flex justify-between text-xs text-ink-muted">
                       <span>{Number(b.spent).toLocaleString(undefined, { maximumFractionDigits: 2 })} spent</span>
-                      <span>{Number(b.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })} budget · {pct.toFixed(0)}%</span>
+                      <span className={Number(b.remaining) < 0 ? "text-danger" : ""}>
+                        {Number(b.remaining).toLocaleString(undefined, { maximumFractionDigits: 2 })} remaining · {pct.toFixed(0)}%
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

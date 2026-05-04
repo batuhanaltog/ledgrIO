@@ -1,15 +1,23 @@
+import { useMemo } from "react";
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { Spinner } from "@/components/ui/Spinner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useOpenClose, useEditModal, useDeleteConfirm } from "@/hooks/useModalState";
+import { useAccounts } from "@/features/accounts/hooks";
 import { useRecurring, useDeleteRecurring, useUpdateRecurring } from "../hooks";
 import { RecurringModal } from "../components/RecurringModal";
 import type { RecurringTemplate } from "../api";
 
 export function RecurringPage() {
   const { data, isPending, isError } = useRecurring();
+  const accounts = useAccounts();
+  const accountMap = useMemo(() => {
+    const map = new Map<number, string>();
+    accounts.data?.results.forEach((a) => map.set(a.id, a.name));
+    return map;
+  }, [accounts.data]);
   const createModal = useOpenClose();
   const editModal = useEditModal<RecurringTemplate>();
   const deleteConfirm = useDeleteConfirm();
@@ -36,7 +44,7 @@ export function RecurringPage() {
           <table className="w-full text-sm">
             <thead className="bg-surface-2 text-ink-muted">
               <tr>
-                {["Description", "Type", "Amount", "Frequency", "Next Due", "Active", ""].map((h) => (
+                {["Description", "Account", "Type", "Amount", "Frequency", "Next Due", "Active", ""].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium">{h}</th>
                 ))}
               </tr>
@@ -45,6 +53,7 @@ export function RecurringPage() {
               {data.results.map((t) => (
                 <tr key={t.id} className="hover:bg-surface-2/50">
                   <td className="px-4 py-3 font-medium text-ink">{t.description}</td>
+                  <td className="px-4 py-3 text-ink-muted">{accountMap.get(t.account) ?? t.account}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${t.type === "income" ? "bg-success/15 text-success" : "bg-danger/15 text-danger"}`}>{t.type}</span>
                   </td>
