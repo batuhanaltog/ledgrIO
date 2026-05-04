@@ -82,7 +82,12 @@ export function AccountModal({ account, onClose }: AccountModalProps) {
           <Input id="opening_balance" inputMode="decimal" invalid={Boolean(errors.opening_balance)} {...register("opening_balance")} />
         </Field>
         <Field label="Notes" htmlFor="notes">
-          <Input id="notes" {...register("notes")} />
+          <textarea
+            id="notes"
+            rows={3}
+            className="w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+            {...register("notes")}
+          />
         </Field>
         <div className="flex justify-end gap-3 pt-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>

@@ -85,7 +85,7 @@ export function AccountsPage() {
         onClose={() => { setDeleteError(null); deleteConfirm.cancel(); }}
         onConfirm={handleDelete}
         loading={deleteAccount.isPending}
-        message={deleteError ?? "Bu hesabı silmek istediğine emin misin?"}
+        error={deleteError}
       />
     </div>
   );
