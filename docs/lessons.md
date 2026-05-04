@@ -56,6 +56,19 @@ Bilinçli trade-off'lar ve öğrenilen dersler. **Bu dosyadaki kararlar değişt
 - **Quantize `fx_rate_snapshot` at both branches:** Pre-existing bug: `_compute_fx` stored the raw Decimal from `get_exchange_rate()` without quantizing. Fix: call `.quantize(QUANTIZE)` on the rate *before* computing `amount_base`, in both the `fx_rate_override` branch and the normal `convert()` branch.
 - **Alert atomicity: DB write first, email second:** In `check_and_send_budget_alerts`, set `alert_sent_at` inside `@transaction.atomic` BEFORE calling `send_mail`. A crash after the DB commit = missed alert (user re-runs beat tomorrow). A crash before the DB commit = double-send on next run. The former is acceptable; the latter is not.
 
+## Frontend (Phase 6+)
+
+- **Tailwind `content: []` → sıfır CSS:** `tailwind.config.js` ilk oluşturulduğunda `content` dizisi boş gelir. Content glob'ları set edilmeden build alınırsa hiçbir utility class üretilmez — sayfa tamamen stilsiz görünür. Her yeni frontend projede `content: ["./index.html", "./src/**/*.{ts,tsx}"]` ilk adım olmalı.
+- **Docker frontend dev workflow:** `docker-compose.yml`'de `frontend` servisi production build'ini `5173:80` üzerinde sunar ve dev portunu bloke eder. Hot-reload için: `docker compose stop frontend` + `cd frontend && npm run dev`. Docker rebuild sadece production deploy ya da nginx config değişikliğinde gerekli.
+
+- **Brand tokens before components:** Tailwind config + CSS variables defined first, primitives themed against them. Reverse order produces hardcoded hexes that need a refactor when palette changes. (D-014)
+- **Vite 8 + Vitest 2 type split:** `vite.config.ts` and `vitest.config.ts` must be separate files. The `test` key inside `defineConfig` from `vite` does not satisfy `UserConfigExport` — vitest provides its own `defineConfig` from `vitest/config`. Symptom: `TS2769 Object literal may only specify known properties, and 'test' does not exist`.
+- **`@apply` cannot reference custom theme tokens defined later in the same file:** Tailwind 3 resolves `@apply bg-canvas` at PostCSS time, before `:root` CSS vars in `@layer base` are read. Use raw `background-color: rgb(var(--canvas))` for body styles; reserve `@apply` for primitives where the class is registered before use.
+- **TS 6.x deprecates `baseUrl`:** Required even with `paths`. Add `"ignoreDeprecations": "6.0"` to silence — TS 7 will move to a different mechanism.
+- **Refresh-queue is the right shape, not refresh-on-every-401:** Without a module-scoped promise guard, N concurrent 401s fire N refresh calls; the first one blacklists the refresh token and the rest 401-bounce the user to login. Single shared promise + `_retried` flag fixes both. (D-015)
+- **Axios envelope flattening lives in one helper:** `parseApiError` returns `{type, status, message, fieldErrors}`. RHF integration is two lines (`setError(field, {type:"server", message})`); without this, every form re-implements DRF envelope parsing.
+- **Logo SVG inline beats logo.png img:** Inline SVG component (`Logo` with `variant=full|mark|wordmark`) lets us recolor the wordmark via Tailwind classes for the dark brand panel. PNG would force a separate white-text logo asset.
+
 ## Process
 
 - **Tamamlanmış faz = donmuş:** Bug fix haricinde tamamlanmış fazlar yeniden açılmaz. Yeni feature = yeni faz. Aksi halde "neredeyiz" sinyali bozulur.
