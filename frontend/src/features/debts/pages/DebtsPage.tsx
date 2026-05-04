@@ -12,6 +12,67 @@ import type { Debt } from "../api";
 
 interface PaymentTarget { debtId: number; debtName: string; }
 
+interface DebtRowProps {
+  d: Debt;
+  isExpanded: boolean;
+  onToggle: (id: number) => void;
+  onEdit: (d: Debt) => void;
+  onPayment: (id: number) => void;
+  onDelete: (id: number) => void;
+}
+
+function DebtRow({ d, isExpanded, onToggle, onEdit, onPayment, onDelete }: DebtRowProps) {
+  const paidPct = Number(d.original_amount) > 0
+    ? Math.min(100, (1 - Number(d.current_balance) / Number(d.original_amount)) * 100)
+    : 100;
+
+  return (
+    <div className="rounded-lg border border-hairline bg-surface overflow-hidden">
+      <div
+        className="flex items-center gap-3 px-5 py-4 cursor-pointer hover:bg-surface-2/50"
+        onClick={() => onToggle(d.id)}
+      >
+        {isExpanded ? <ChevronDown className="h-4 w-4 text-ink-muted shrink-0" /> : <ChevronRight className="h-4 w-4 text-ink-muted shrink-0" />}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-4">
+            <p className="font-medium text-ink">{d.name}</p>
+            <div className="flex items-center gap-4 text-sm shrink-0">
+              <span className="text-ink-muted num">
+                {Number(d.current_balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} / {Number(d.original_amount).toLocaleString(undefined, { maximumFractionDigits: 2 })} {d.currency_code}
+              </span>
+              {d.is_settled && <span className="text-xs px-2 py-0.5 rounded-full bg-success/15 text-success font-medium">Settled</span>}
+            </div>
+          </div>
+          <div className="mt-2 h-1.5 rounded-full bg-surface-2 overflow-hidden">
+            <div className="h-full rounded-full bg-brand-cyan transition-all" style={{ width: `${paidPct}%` }} />
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <Button variant="ghost" size="icon" onClick={() => onEdit(d)} aria-label="Edit"><Pencil className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => onDelete(d.id)} aria-label="Delete"><Trash2 className="h-4 w-4 text-danger" /></Button>
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="border-t border-hairline px-5 py-4 space-y-3 bg-surface-2/30">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            <div><p className="text-xs text-ink-muted mb-0.5">Monthly Payment</p><p className="font-medium num text-ink">{Number(d.expected_monthly_payment).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p></div>
+            {d.interest_rate_pct && <div><p className="text-xs text-ink-muted mb-0.5">Interest</p><p className="font-medium num text-ink">{d.interest_rate_pct}%</p></div>}
+            {d.due_day && <div><p className="text-xs text-ink-muted mb-0.5">Due Day</p><p className="font-medium text-ink">Day {d.due_day}</p></div>}
+            {d.notes && <div className="col-span-2"><p className="text-xs text-ink-muted mb-0.5">Notes</p><p className="text-ink">{d.notes}</p></div>}
+          </div>
+          <Button
+            variant="outline" size="sm"
+            onClick={() => onPayment(d.id)}
+          >
+            <CreditCard className="h-4 w-4" /> Add Payment
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DebtsPage() {
   const { data, isPending, isError } = useDebts();
   const createModal = useOpenClose();
@@ -41,58 +102,20 @@ export function DebtsPage() {
         <p className="text-sm text-ink-muted">No debts recorded.</p>
       ) : (
         <div className="space-y-2">
-          {data.results.map((debt) => {
-            const paidPct = Number(debt.original_amount) > 0
-              ? Math.min(100, (1 - Number(debt.current_balance) / Number(debt.original_amount)) * 100)
-              : 100;
-            const isExpanded = expandedId === debt.id;
-
-            return (
-              <div key={debt.id} className="rounded-lg border border-hairline bg-surface overflow-hidden">
-                <div
-                  className="flex items-center gap-3 px-5 py-4 cursor-pointer hover:bg-surface-2/50"
-                  onClick={() => toggle(debt.id)}
-                >
-                  {isExpanded ? <ChevronDown className="h-4 w-4 text-ink-muted shrink-0" /> : <ChevronRight className="h-4 w-4 text-ink-muted shrink-0" />}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-4">
-                      <p className="font-medium text-ink">{debt.name}</p>
-                      <div className="flex items-center gap-4 text-sm shrink-0">
-                        <span className="text-ink-muted num">
-                          {Number(debt.current_balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} / {Number(debt.original_amount).toLocaleString(undefined, { maximumFractionDigits: 2 })} {debt.currency_code}
-                        </span>
-                        {debt.is_settled && <span className="text-xs px-2 py-0.5 rounded-full bg-success/15 text-success font-medium">Settled</span>}
-                      </div>
-                    </div>
-                    <div className="mt-2 h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                      <div className="h-full rounded-full bg-brand-cyan transition-all" style={{ width: `${paidPct}%` }} />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" onClick={() => editModal.open(debt)} aria-label="Edit"><Pencil className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => deleteConfirm.confirm(debt.id)} aria-label="Delete"><Trash2 className="h-4 w-4 text-danger" /></Button>
-                  </div>
-                </div>
-
-                {isExpanded && (
-                  <div className="border-t border-hairline px-5 py-4 space-y-3 bg-surface-2/30">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                      <div><p className="text-xs text-ink-muted mb-0.5">Monthly Payment</p><p className="font-medium num text-ink">{Number(debt.expected_monthly_payment).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p></div>
-                      {debt.interest_rate_pct && <div><p className="text-xs text-ink-muted mb-0.5">Interest</p><p className="font-medium num text-ink">{debt.interest_rate_pct}%</p></div>}
-                      {debt.due_day && <div><p className="text-xs text-ink-muted mb-0.5">Due Day</p><p className="font-medium text-ink">Day {debt.due_day}</p></div>}
-                      {debt.notes && <div className="col-span-2"><p className="text-xs text-ink-muted mb-0.5">Notes</p><p className="text-ink">{debt.notes}</p></div>}
-                    </div>
-                    <Button
-                      variant="outline" size="sm"
-                      onClick={() => setPaymentTarget({ debtId: debt.id, debtName: debt.name })}
-                    >
-                      <CreditCard className="h-4 w-4" /> Add Payment
-                    </Button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {data.results.map((debt) => (
+            <DebtRow
+              key={debt.id}
+              d={debt}
+              isExpanded={expandedId === debt.id}
+              onToggle={toggle}
+              onEdit={editModal.open}
+              onPayment={(id) => {
+                const found = data.results.find((x) => x.id === id);
+                if (found) setPaymentTarget({ debtId: found.id, debtName: found.name });
+              }}
+              onDelete={(id) => { setDeleteError(null); deleteConfirm.confirm(id); }}
+            />
+          ))}
         </div>
       )}
 

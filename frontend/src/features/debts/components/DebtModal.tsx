@@ -17,8 +17,14 @@ const schema = z.object({
   original_amount: z.string().regex(/^\d+(\.\d+)?$/, "Enter a valid amount."),
   expected_monthly_payment: z.string().regex(/^\d+(\.\d+)?$/, "Enter a valid amount."),
   currency_code: z.string().length(3).regex(/^[A-Z]{3}$/),
-  interest_rate_pct: z.string().optional(),
-  due_day: z.string().optional(),
+  interest_rate_pct: z.string().optional().refine(
+    (v) => !v || /^\d+(\.\d+)?$/.test(v),
+    { message: "Enter a valid rate." }
+  ),
+  due_day: z.string().optional().refine(
+    (v) => !v || (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 31),
+    { message: "Enter a day between 1 and 31." }
+  ),
   notes: z.string().optional(),
 });
 type FormInput = z.infer<typeof schema>;
