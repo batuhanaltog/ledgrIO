@@ -25,7 +25,7 @@ export function RecurringPage() {
   const updateRecurring = useUpdateRecurring();
 
   if (isPending) return <div className="flex justify-center py-20"><Spinner /></div>;
-  if (isError || !data) return <Alert tone="danger">Tekrar eden işlemler yüklenemedi.</Alert>;
+  if (isError || !data) return <Alert tone="danger">Could not load recurring templates.</Alert>;
 
   return (
     <div className="space-y-6">
@@ -63,6 +63,7 @@ export function RecurringPage() {
                   <td className="px-4 py-3">
                     <Button
                       variant="ghost" size="icon"
+                      disabled={updateRecurring.isPending}
                       onClick={() => updateRecurring.mutate({ id: t.id, data: { is_active: !t.is_active } })}
                       aria-label={t.is_active ? "Deactivate" : "Activate"}
                     >

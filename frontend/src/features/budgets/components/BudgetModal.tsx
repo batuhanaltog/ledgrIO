@@ -55,7 +55,7 @@ export function BudgetModal({ budget, onClose }: BudgetModalProps) {
       amount: budget.amount.replace(/\.?0+$/, ""),
       date_from: budget.date_from, date_to: budget.date_to,
       alert_threshold: budget.alert_threshold
-        ? String(Number(budget.alert_threshold) * 100)
+        ? (parseFloat(budget.alert_threshold) * 100).toString().replace(/\.?0+$/, "")
         : "",
     } : { name: "", category_id: "", amount: "", date_from, date_to, alert_threshold: "" });
   }, [budget, isEdit, reset, date_from, date_to]);
@@ -73,7 +73,7 @@ export function BudgetModal({ budget, onClose }: BudgetModalProps) {
       date_from: values.date_from,
       date_to: values.date_to,
       alert_threshold: values.alert_threshold
-        ? String(Number(values.alert_threshold) / 100)
+        ? (parseFloat(values.alert_threshold) / 100).toString()
         : null,
     };
     try {

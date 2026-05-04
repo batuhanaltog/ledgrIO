@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
@@ -21,9 +22,10 @@ export function BudgetsPage() {
   const editModal = useEditModal<Budget>();
   const deleteConfirm = useDeleteConfirm();
   const deleteBudget = useDeleteBudget();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (isPending) return <div className="flex justify-center py-20"><Spinner /></div>;
-  if (isError || !data) return <Alert tone="danger">Bütçeler yüklenemedi.</Alert>;
+  if (isError || !data) return <Alert tone="danger">Could not load budgets.</Alert>;
 
   return (
     <div className="space-y-6">
@@ -75,9 +77,19 @@ export function BudgetsPage() {
       {editModal.selected && <BudgetModal budget={editModal.selected} onClose={editModal.close} />}
       <ConfirmDialog
         open={deleteConfirm.pendingId !== null}
-        onClose={deleteConfirm.cancel}
-        onConfirm={async () => { if (deleteConfirm.pendingId !== null) { await deleteBudget.mutateAsync(deleteConfirm.pendingId); deleteConfirm.cancel(); } }}
+        onClose={() => { setDeleteError(null); deleteConfirm.cancel(); }}
+        onConfirm={async () => {
+          if (deleteConfirm.pendingId !== null) {
+            try {
+              await deleteBudget.mutateAsync(deleteConfirm.pendingId);
+              deleteConfirm.cancel();
+            } catch {
+              setDeleteError("Could not delete budget. Please try again.");
+            }
+          }
+        }}
         loading={deleteBudget.isPending}
+        error={deleteError}
       />
     </div>
   );
