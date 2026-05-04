@@ -5,7 +5,6 @@ import { z } from "zod";
 import { Modal } from "@/components/ui/Modal";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { Spinner } from "@/components/ui/Spinner";
@@ -15,7 +14,6 @@ import type { Category } from "../api";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required."),
-  category_type: z.enum(["income", "expense"]),
   icon: z.string().optional(),
   color: z.string().optional(),
 });
@@ -38,19 +36,14 @@ export function CategoryModal({ category, onClose }: CategoryModalProps) {
     formState: { errors, isSubmitting },
   } = useForm<FormInput>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", category_type: "expense", icon: "", color: "" },
+    defaultValues: { name: "", icon: "", color: "" },
   });
 
   useEffect(() => {
     reset(
       isEdit
-        ? {
-            name: category.name,
-            category_type: "expense",
-            icon: category.icon,
-            color: category.color,
-          }
-        : { name: "", category_type: "expense", icon: "", color: "" },
+        ? { name: category.name, icon: category.icon, color: category.color }
+        : { name: "", icon: "", color: "" },
     );
   }, [category, isEdit, reset]);
 
@@ -80,17 +73,7 @@ export function CategoryModal({ category, onClose }: CategoryModalProps) {
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         {topError ? <Alert tone="danger">{topError}</Alert> : null}
         <Field label="Name" htmlFor="name" error={errors.name?.message}>
-          <Input
-            id="name"
-            invalid={Boolean(errors.name)}
-            {...register("name")}
-          />
-        </Field>
-        <Field label="Type" htmlFor="category_type">
-          <Select id="category_type" {...register("category_type")}>
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
-          </Select>
+          <Input id="name" invalid={Boolean(errors.name)} {...register("name")} />
         </Field>
         <Field label="Icon" htmlFor="icon" hint="e.g. leave blank">
           <Input id="icon" {...register("icon")} />
@@ -104,12 +87,7 @@ export function CategoryModal({ category, onClose }: CategoryModalProps) {
           />
         </Field>
         <div className="flex justify-end gap-3 pt-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>

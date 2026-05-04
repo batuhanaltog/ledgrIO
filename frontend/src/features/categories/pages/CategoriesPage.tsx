@@ -74,7 +74,7 @@ export function CategoriesPage() {
                       "—"
                     )}
                   </td>
-                  <td className="px-4 py-3 text-ink-muted">—</td>
+                  <td className="px-4 py-3 text-ink-muted capitalize">{cat.category_type ?? "—"}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
                       <Button

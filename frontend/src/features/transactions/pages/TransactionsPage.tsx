@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
@@ -9,6 +9,7 @@ import {
   useEditModal,
   useDeleteConfirm,
 } from "@/hooks/useModalState";
+import { useAccounts } from "@/features/accounts/hooks";
 import { useTransactions, useDeleteTransaction } from "../hooks";
 import {
   TransactionFilters,
@@ -32,6 +33,12 @@ export function TransactionsPage() {
     date_to,
   });
   const { data, isPending, isError } = useTransactions(params);
+  const accounts = useAccounts();
+  const accountMap = useMemo(() => {
+    const map = new Map<number, string>();
+    accounts.data?.results.forEach((a) => map.set(a.id, a.name));
+    return map;
+  }, [accounts.data]);
   const createModal = useOpenClose();
   const editModal = useEditModal<Transaction>();
   const deleteConfirm = useDeleteConfirm();
@@ -109,7 +116,7 @@ export function TransactionsPage() {
                   <td className="px-4 py-3 text-ink-muted">
                     {tx.category?.name ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-ink-muted">{tx.account_id}</td>
+                  <td className="px-4 py-3 text-ink-muted">{accountMap.get(tx.account_id) ?? tx.account_id}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`text-xs font-semibold uppercase ${tx.type === "income" ? "text-success" : "text-danger"}`}

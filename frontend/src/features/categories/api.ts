@@ -5,6 +5,7 @@ export interface Category {
   name: string;
   icon: string;
   color: string;
+  category_type?: "income" | "expense";
   is_system: boolean;
   owner_id: number | null;
   parent_id: number | null;
@@ -19,7 +20,6 @@ export interface PaginatedCategories {
 
 export interface CategoryInput {
   name: string;
-  category_type: "income" | "expense";
   icon?: string;
   color?: string;
 }
